@@ -5,7 +5,6 @@ branches:
     regex: ^master$|^main$
     tag: ''
     increment: Minor
-    prevent-increment-of-merged-server-side-branch-merge: false
     track-merge-target: false
     tracks-release-branches: false
     is-release-branch: true
