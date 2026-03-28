@@ -3,9 +3,9 @@ using Microsoft.UI.Xaml.Controls;
 using Serilog;
 using System;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace ShortcutManager
 {
@@ -15,10 +15,12 @@ namespace ShortcutManager
     public sealed partial class SettingsDialog : ContentDialog
     {
         private const string ShortcutName = "ShortcutManager.lnk";
+        private MainWindow _mainWindow;
 
-        public SettingsDialog()
+        public SettingsDialog(MainWindow mainWindow)
         {
             this.InitializeComponent();
+            _mainWindow = mainWindow;
             LoadSettings();
         }
 
@@ -45,13 +47,12 @@ namespace ShortcutManager
 
                 VersionTextBox.Text = $"Version: {version}";
 
-
                 // Check if the application is already configured to run at startup
                 StartupCheckBox.IsChecked = File.Exists(GetStartupShortcutPath());
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Error loading settings: {ex.Message}");
+                Log.Error(ex, "Error loading settings");
                 VersionTextBox.Text = "Build: Version info unavailable";
             }
         }
@@ -59,7 +60,6 @@ namespace ShortcutManager
         /// <summary>
         /// Handles the Checked event to create a startup shortcut.
         /// </summary>
-        [RequiresUnreferencedCode("Calls ShortcutManager.SettingsDialog.CreateShortcut(String, String)")]
         private void StartupCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             try
@@ -73,7 +73,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Error enabling startup: {ex.Message}");
+                Log.Error(ex, "Error enabling startup shortcut");
             }
         }
 
@@ -92,7 +92,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Error disabling startup: {ex.Message}");
+                Log.Error(ex, "Error disabling startup shortcut");
             }
         }
 
@@ -101,7 +101,6 @@ namespace ShortcutManager
         /// </summary>
         /// <param name="targetPath">The application executable path.</param>
         /// <param name="shortcutPath">The destination .lnk path.</param>
-        [RequiresUnreferencedCode("Calls System.Runtime.InteropServices.Marshal.ReleaseComObject(Object)")]
         private void CreateShortcut(string targetPath, string shortcutPath)
         {
             try
@@ -141,7 +140,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Error opening directory: {ex.Message}");
+                Log.Error(ex, "Error opening application directory");
             }
         }
 
@@ -159,8 +158,27 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Error opening startup directory: {ex.Message}");
+                Log.Error(ex, "Error opening startup directory");
             }
+        }
+
+        private async void RegenerateAllIcons_Click(object sender, RoutedEventArgs e)
+        {
+            // Close the current settings dialog to allow the confirmation dialog to show clearly
+            this.Hide();
+            await _mainWindow.RegenerateAllIcons();
+        }
+
+        private async void CleanUpIcons_Click(object sender, RoutedEventArgs e)
+        {
+            this.Hide();
+            await _mainWindow.CleanUpUnusedIcons();
+        }
+
+        private async void RemoveInvalidShortcuts_Click(object sender, RoutedEventArgs e)
+        {
+            this.Hide();
+            await _mainWindow.CleanUpInvalidShortcuts();
         }
     }
 }

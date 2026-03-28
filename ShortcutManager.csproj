@@ -26,6 +26,7 @@
 	<AppxPackage>false</AppxPackage>
 	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 	<BuiltInComSupport>true</BuiltInComSupport>
+	<SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>

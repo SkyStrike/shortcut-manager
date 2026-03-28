@@ -24,7 +24,6 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
-using Windows.Storage.Pickers;
 using WinRT.Interop;
 using System.Runtime.InteropServices;
 
@@ -97,7 +96,7 @@ namespace ShortcutManager
                     presenter.IsResizable = false;
                     presenter.IsMinimizable = true;
                     presenter.IsMaximizable = false;
-                    presenter.IsAlwaysOnTop = true;
+                    //presenter.IsAlwaysOnTop = true;
                     presenter.SetBorderAndTitleBar(false, false);
                 }
 
@@ -698,6 +697,14 @@ namespace ShortcutManager
                             }
                         }
                         _isUpdatingStates = false;
+
+                        // Auto-highlight the first result
+                        ClearSelection();
+                        if (_searchResultGroup.Shortcuts.Any())
+                        {
+                            _selectedItem = _searchResultGroup.Shortcuts[0];
+                            _selectedItem.IsSelected = true;
+                        }
                     }
                     else if (MyGroups.Contains(_searchResultGroup))
                     {
@@ -860,9 +867,151 @@ namespace ShortcutManager
 
         private async void MenuSettings_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new SettingsDialog();
+            var dialog = new SettingsDialog(this);
             dialog.XamlRoot = this.Content.XamlRoot;
             await dialog.ShowAsync();
+        }
+
+        private void MenuHide_Click(object sender, RoutedEventArgs e)
+        {
+            this.AppWindow.Hide();
+        }
+
+        public async Task RegenerateAllIcons()
+        {
+            ContentDialog confirmDialog = new ContentDialog
+            {
+                Title = "Regenerate All Icons",
+                Content = "This will refresh icons for all shortcuts in all groups. Any manually customized icons will be lost. Do you want to proceed?",
+                PrimaryButtonText = "Regenerate",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await confirmDialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                foreach (var group in MyGroups)
+                {
+                    if (group == _searchResultGroup) continue;
+
+                    foreach (var item in group.Shortcuts)
+                    {
+                        ExtractAndSaveIcon(item, force: true);
+                    }
+                }
+                SaveStates();
+            }
+        }
+
+        public async Task CleanUpUnusedIcons()
+        {
+            ContentDialog confirmDialog = new ContentDialog
+            {
+                Title = "Clean Up Icons",
+                Content = "This will delete all cached icons that are not currently used by any of your shortcuts. Do you want to proceed?",
+                PrimaryButtonText = "Clean Up",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await confirmDialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                try
+                {
+                    string iconsDir = Path.Combine(AppContext.BaseDirectory, "icons");
+                    if (!Directory.Exists(iconsDir)) return;
+
+                    // Get all icons currently in use
+                    var usedIcons = MyGroups
+                        .Where(g => g.GroupName != "Search Result")
+                        .SelectMany(g => g.Shortcuts)
+                        .Select(s => Path.GetFileName(s.Icon))
+                        .Where(name => !string.IsNullOrEmpty(name))
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                    // Get all files in the icons directory
+                    var allIconFiles = Directory.GetFiles(iconsDir);
+                    int deletedCount = 0;
+
+                    foreach (var file in allIconFiles)
+                    {
+                        string fileName = Path.GetFileName(file);
+                        if (!usedIcons.Contains(fileName))
+                        {
+                            try
+                            {
+                                File.Delete(file);
+                                deletedCount++;
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Warning(ex, "Could not delete unused icon file: {File}", file);
+                            }
+                        }
+                    }
+
+                    Log.Information("Cleaned up {Count} unused icon files.", deletedCount);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error during icon cleanup");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Scans all shortcuts and removes those with invalid/non-existent paths after confirmation.
+        /// </summary>
+        public async Task CleanUpInvalidShortcuts()
+        {
+            ContentDialog confirmDialog = new ContentDialog
+            {
+                Title = "Remove Invalid Shortcuts",
+                Content = "This will scan all groups and remove shortcuts that point to files or directories that no longer exist. Do you want to proceed?",
+                PrimaryButtonText = "Remove Invalid",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await confirmDialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                try
+                {
+                    int removedCount = 0;
+                    // We iterate backwards to allow safe removal while looping
+                    foreach (var group in MyGroups)
+                    {
+                        if (group == _searchResultGroup) continue;
+
+                        for (int i = group.Shortcuts.Count - 1; i >= 0; i--)
+                        {
+                            var item = group.Shortcuts[i];
+                            if (string.IsNullOrEmpty(item.Path) || (!File.Exists(item.Path) && !Directory.Exists(item.Path)))
+                            {
+                                group.Shortcuts.RemoveAt(i);
+                                removedCount++;
+                            }
+                        }
+                    }
+
+                    if (removedCount > 0)
+                    {
+                        SaveStates();
+                        UpdateWindowSize();
+                        Log.Information("Cleaned up {Count} invalid shortcuts.", removedCount);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error during invalid shortcut cleanup");
+                }
+            }
         }
 
         private async void MenuExit_Click(object sender, RoutedEventArgs e)
@@ -1019,7 +1168,20 @@ namespace ShortcutManager
             if (e.DataView.Contains(StandardDataFormats.StorageItems))
             {
                 var items = await e.DataView.GetStorageItemsAsync();
+                ShortcutGroup? finalTargetGroup = null;
+
                 if (sender is Expander expander2 && expander2.DataContext is ShortcutGroup group)
+                {
+                    finalTargetGroup = group;
+                }
+                else if (!MyGroups.Any(g => g.GroupName != "Search Result"))
+                {
+                    // If no groups exist, create a default one
+                    finalTargetGroup = new ShortcutGroup { GroupName = "Default", IsExpanded = true };
+                    MyGroups.Add(finalTargetGroup);
+                }
+
+                if (finalTargetGroup != null)
                 {
                     foreach (var storageItem in items)
                     {
@@ -1044,7 +1206,7 @@ namespace ShortcutManager
                                 }
                                 catch (Exception ex)
                                 {
-                                    Log.Error(ex, $"Error resolving .lnk: {ex.Message}");
+                                    Log.Error(ex, "Error resolving .lnk for {LnkPath}", targetPath);
                                 }
                             }
                         }
@@ -1058,7 +1220,7 @@ namespace ShortcutManager
                         };
 
                         ExtractAndSaveIcon(newItem, null, false);
-                        group.Shortcuts.Add(newItem);
+                        finalTargetGroup.Shortcuts.Add(newItem);
                     }
                     SaveStates();
                     UpdateWindowSize();
@@ -1148,13 +1310,27 @@ namespace ShortcutManager
         /// <summary>
         /// Handles application-wide keyboard shortcuts.
         /// </summary>
-        private void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        private async void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
         {
             if (e.Key == Windows.System.VirtualKey.Escape)
             {
                 ClearOrHideApp();
                 e.Handled = true; 
                 return;
+            }
+
+            // Enter: Launch Selected Item
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                if (_selectedItem != null)
+                {
+                    if (await EnsurePathValid(_selectedItem))
+                    {
+                        ExecuteShortcut(_selectedItem);
+                    }
+                    e.Handled = true;
+                    return;
+                }
             }
 
             // F1 - F5: Toggle Expansion of Custom Groups

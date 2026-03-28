@@ -29,6 +29,11 @@
                         <FontIcon Glyph="&#xE713;" FontFamily="Segoe Fluent Icons" />
                     </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Hide" Click="MenuHide_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE7D1;" FontFamily="Segoe Fluent Icons" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Exit" Click="MenuExit_Click">
                     <MenuFlyoutItem.Icon>

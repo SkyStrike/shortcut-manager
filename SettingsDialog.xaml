@@ -24,6 +24,27 @@
             </StackPanel>
         </Button>
 
+        <Button HorizontalAlignment="Stretch" Click="RegenerateAllIcons_Click">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <FontIcon Glyph="&#xE72C;" FontFamily="Segoe Fluent Icons" />
+                <TextBlock Text="Regenerate All Icons"/>
+            </StackPanel>
+        </Button>
+
+        <Button HorizontalAlignment="Stretch" Click="CleanUpIcons_Click">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <FontIcon Glyph="&#xE74D;" FontFamily="Segoe Fluent Icons" />
+                <TextBlock Text="Clean Up Unused Icons"/>
+            </StackPanel>
+        </Button>
+
+        <Button HorizontalAlignment="Stretch" Click="RemoveInvalidShortcuts_Click">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <FontIcon Glyph="&#xE9CE;" FontFamily="Segoe Fluent Icons" />
+                <TextBlock Text="Remove Invalid Shortcuts"/>
+            </StackPanel>
+        </Button>
+
         <StackPanel Spacing="2">
             <TextBlock Text="Version Info" Style="{StaticResource BodyStrongTextBlockStyle}"/>
             <TextBox x:Name="VersionTextBox" 
