@@ -5,6 +5,9 @@ using System.IO;
 
 namespace ShortcutManager
 {
+    /// <summary>
+    /// Dialog for editing the properties of a specific ShortcutItem.
+    /// </summary>
     public sealed partial class PropertiesDialog : ContentDialog
     {
         private ShortcutItem _item;
@@ -14,6 +17,7 @@ namespace ShortcutManager
             this.InitializeComponent();
             _item = item;
 
+            // Initialize fields with current item values
             NameTextBox.Text = item.Name;
             PathTextBox.Text = item.Path;
             ArgsTextBox.Text = item.Arguments;
@@ -22,17 +26,25 @@ namespace ShortcutManager
             this.PrimaryButtonClick += PropertiesDialog_PrimaryButtonClick;
         }
 
+        /// <summary>
+        /// Validates input and saves changes to the ShortcutItem before closing.
+        /// </summary>
         private void PropertiesDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
             string path = PathTextBox.Text.Trim();
-            if (string.IsNullOrEmpty(path) || !File.Exists(path) && !Directory.Exists(path))
+            
+            // Basic path validation - ensures the file or directory actually exists
+            if (string.IsNullOrEmpty(path) || (!File.Exists(path) && !Directory.Exists(path)))
             {
                 ErrorTextBlock.Text = "Invalid path. Please enter a valid file or directory path.";
                 ErrorTextBlock.Visibility = Visibility.Visible;
+                
+                // Prevent the dialog from closing
                 args.Cancel = true;
                 return;
             }
 
+            // Apply changes to the data model
             _item.Name = NameTextBox.Text.Trim();
             _item.Path = path;
             _item.Arguments = ArgsTextBox.Text.Trim();

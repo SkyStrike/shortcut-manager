@@ -7,6 +7,9 @@ using System.Reflection;
 
 namespace ShortcutManager
 {
+    /// <summary>
+    /// Dialog for managing application-wide settings.
+    /// </summary>
     public sealed partial class SettingsDialog : ContentDialog
     {
         private const string ShortcutName = "ShortcutManager.lnk";
@@ -17,22 +20,28 @@ namespace ShortcutManager
             LoadSettings();
         }
 
+        /// <summary>
+        /// Gets the full path to the shortcut file in the Windows Startup folder.
+        /// </summary>
         private string GetStartupShortcutPath()
         {
             string startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
             return Path.Combine(startupFolder, ShortcutName);
         }
 
+        /// <summary>
+        /// Populates the dialog with current system and application states.
+        /// </summary>
         private void LoadSettings()
         {
             try
             {
-                // Retrieve version
+                // Retrieve assembly version for the build number display
                 var assembly = Assembly.GetExecutingAssembly();
                 var version = assembly.GetName().Version;
                 VersionTextBlock.Text = $"Build: {version?.ToString() ?? "Unknown"}";
 
-                // Check Startup folder for shortcut
+                // Check if the application is already configured to run at startup
                 StartupCheckBox.IsChecked = File.Exists(GetStartupShortcutPath());
             }
             catch (Exception ex)
@@ -42,6 +51,9 @@ namespace ShortcutManager
             }
         }
 
+        /// <summary>
+        /// Handles the Checked event to create a startup shortcut.
+        /// </summary>
         private void StartupCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             try
@@ -59,6 +71,9 @@ namespace ShortcutManager
             }
         }
 
+        /// <summary>
+        /// Handles the Unchecked event to remove the startup shortcut.
+        /// </summary>
         private void StartupCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
             try
@@ -75,6 +90,11 @@ namespace ShortcutManager
             }
         }
 
+        /// <summary>
+        /// Uses COM (WScript.Shell) to create a Windows shell shortcut.
+        /// </summary>
+        /// <param name="targetPath">The application executable path.</param>
+        /// <param name="shortcutPath">The destination .lnk path.</param>
         private void CreateShortcut(string targetPath, string shortcutPath)
         {
             try
@@ -83,6 +103,7 @@ namespace ShortcutManager
                 if (shellType == null) return;
 
                 object shell = Activator.CreateInstance(shellType);
+                // Invoke CreateShortcut via reflection
                 dynamic shortcut = shellType.InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { shortcutPath });
                 
                 shortcut.TargetPath = targetPath;
@@ -90,6 +111,7 @@ namespace ShortcutManager
                 shortcut.Description = "Shortcut Manager";
                 shortcut.Save();
 
+                // Clean up COM objects
                 System.Runtime.InteropServices.Marshal.ReleaseComObject(shortcut);
                 System.Runtime.InteropServices.Marshal.ReleaseComObject(shell);
             }

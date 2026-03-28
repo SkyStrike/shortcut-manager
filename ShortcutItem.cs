@@ -9,6 +9,10 @@ using System.Threading.Tasks;
 
 namespace ShortcutManager
 {
+    /// <summary>
+    /// Represents an individual shortcut item within a group.
+    /// Implements INotifyPropertyChanged to ensure UI updates when properties change.
+    /// </summary>
     public class ShortcutItem : INotifyPropertyChanged
     {
         private string _name = "";
@@ -28,6 +32,9 @@ namespace ShortcutManager
         }
 
         private string _icon = "";
+        /// <summary>
+        /// Path to the icon file. Can be relative to the application base directory.
+        /// </summary>
         [JsonPropertyName("icon")]
         public string Icon
         {
@@ -52,6 +59,9 @@ namespace ShortcutManager
         }
 
         private string _id = System.Guid.NewGuid().ToString();
+        /// <summary>
+        /// Unique identifier used for drag-and-drop operations and lookup.
+        /// </summary>
         [JsonPropertyName("id")]
         public string Id
         {
@@ -60,6 +70,10 @@ namespace ShortcutManager
         }
 
         private bool _isSelected = false;
+        /// <summary>
+        /// UI state property to track if the item is currently selected/highlighted.
+        /// Ignored during JSON serialization.
+        /// </summary>
         [JsonIgnore]
         public bool IsSelected
         {

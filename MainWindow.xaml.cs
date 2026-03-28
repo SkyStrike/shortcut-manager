@@ -26,20 +26,33 @@ using WinRT.Interop;
 
 namespace ShortcutManager
 {
+    /// <summary>
+    /// The main window of the application, managing shortcut groups, searching, and interactions.
+    /// </summary>
     public sealed partial class MainWindow : Window
     {
+        // Main data collection for the UI
         public ObservableCollection<ShortcutGroup> MyGroups { get; set; } = new();
+        
+        // Special group for displaying search results
         private ShortcutGroup _searchResultGroup = new() { GroupName = "Search Result", IsExpanded = true };
+        
+        // Flag to prevent recursive state saving during bulk UI updates
         private bool _isUpdatingStates = false;
+        
         private AppWindow _appWindow;
+        
+        // Window height calculation settings
         private double _appMinHeightMultiplier = 0.50;
 
+        // Path to the configuration file
         private string shortcutFile = Path.Combine(AppContext.BaseDirectory, "shortcuts.json");
 
         public MainWindow()
         {
             InitializeComponent();
 
+            // Set up borderless/custom title bar window
             this.ExtendsContentIntoTitleBar = true;
             this.SetTitleBar(null);
 
@@ -49,6 +62,7 @@ namespace ShortcutManager
 
             if (_appWindow != null)
             {
+                // Hide from task switcher (Alt-Tab) for a more "background app" feel
                 _appWindow.IsShownInSwitchers = false;
 
                 if (_appWindow.Presenter is OverlappedPresenter presenter)
@@ -60,6 +74,7 @@ namespace ShortcutManager
                     presenter.SetBorderAndTitleBar(false, false);
                 }
 
+                // Initial positioning: center horizontally, slightly above center vertically
                 var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
                 if (displayArea != null)
                 {
@@ -72,14 +87,16 @@ namespace ShortcutManager
                 }
             }
 
-            // Set system backdrop to Acrylic
+            // Set system backdrop to Acrylic for modern Windows 11 aesthetics
             this.SystemBackdrop = new DesktopAcrylicBackdrop();
 
             LoadShortcuts();
             GroupsList.ItemsSource = MyGroups;
             
+            // Adjust window size after initial layout
             this.DispatcherQueue.TryEnqueue(() => UpdateWindowSize());
 
+            // Auto-clear selection when the app loses focus
             this.Activated += MainWindow_Activated;
 
             this.Closed += (s, e) => {
@@ -100,7 +117,7 @@ namespace ShortcutManager
 
         private void RootGrid_PointerPressed(object sender, PointerRoutedEventArgs e)
         {
-            // Only clear if clicking the background grid itself, not its children
+            // Clear selection if clicking the background grid itself, not its children
             if (e.OriginalSource == sender)
             {
                 ClearSelection();
@@ -116,6 +133,9 @@ namespace ShortcutManager
             }
         }
 
+        /// <summary>
+        /// Loads shortcuts from the JSON file and resolves/extracts missing icons.
+        /// </summary>
         private void LoadShortcuts()
         {
             try
@@ -138,7 +158,7 @@ namespace ShortcutManager
                         {
                             foreach (var item in group.Shortcuts)
                             {
-                                // Resolve relative path to absolute for UI
+                                // Resolve relative icon path to absolute for UI binding
                                 if (!string.IsNullOrEmpty(item.Icon) && !Path.IsPathRooted(item.Icon))
                                 {
                                     item.Icon = Path.Combine(AppContext.BaseDirectory, item.Icon);
@@ -161,6 +181,9 @@ namespace ShortcutManager
             }
         }
 
+        /// <summary>
+        /// Converts an absolute path to a path relative to the application base directory if possible.
+        /// </summary>
         private string GetRelativePath(string fullPath)
         {
             if (string.IsNullOrEmpty(fullPath)) return fullPath;
@@ -172,6 +195,10 @@ namespace ShortcutManager
             return fullPath;
         }
 
+        /// <summary>
+        /// Persists the current state of groups and shortcuts to the JSON file.
+        /// Saves relative paths for icons to maintain portability.
+        /// </summary>
         private void SaveStates()
         {
             if (_isUpdatingStates) return;
@@ -184,7 +211,7 @@ namespace ShortcutManager
                     jsonPath = Path.GetFullPath(shortcutFile);
                 }
 
-                // Create a clone with relative paths for saving
+                // Create a clone with relative icon paths for portable saving
                 var groupsToSave = MyGroups.Where(g => g.GroupName != "Search Result")
                     .Select(g => new ShortcutGroup {
                         GroupName = g.GroupName,
@@ -210,6 +237,9 @@ namespace ShortcutManager
             }
         }
 
+        /// <summary>
+        /// Adjusts the window height dynamically based on the content height and screen constraints.
+        /// </summary>
         private void UpdateWindowSize()
         {
             if (this.Content is FrameworkElement root && _appWindow != null)
@@ -237,6 +267,9 @@ namespace ShortcutManager
             }
         }
 
+        /// <summary>
+        /// Launches the targeted application or file, respecting arguments and admin privileges.
+        /// </summary>
         private void ExecuteShortcut(ShortcutItem item) {
             try
             {
@@ -249,7 +282,7 @@ namespace ShortcutManager
                 };
                 System.Diagnostics.Process.Start(startInfo);
             }
-            catch (System.ComponentModel.Win32Exception) { }
+            catch (System.ComponentModel.Win32Exception) { } // User cancelled UAC prompt or other launch error
         }
 
         private ShortcutItem? _selectedItem;
@@ -316,7 +349,7 @@ namespace ShortcutManager
                     }
                     else if (File.Exists(item.Path))
                     {
-                        // Fallback: use /select if Path.GetDirectoryName failed but file exists
+                        // Fallback: select the file if directory lookup failed
                          System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                         {
                             FileName = "explorer.exe",
@@ -332,27 +365,41 @@ namespace ShortcutManager
             }
         }
 
-        private void MenuRemove_Click(object sender, RoutedEventArgs e)
+        private async void MenuRemove_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
             {
-                // Remove from all groups
-                foreach (var group in MyGroups)
+                ContentDialog confirmDialog = new ContentDialog
                 {
-                    if (group.Shortcuts.Contains(item))
+                    Title = "Remove Shortcut",
+                    Content = $"Are you sure you want to remove '{item.Name}'?",
+                    PrimaryButtonText = "Remove",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.Content.XamlRoot
+                };
+
+                var result = await confirmDialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                    // Remove from all groups
+                    foreach (var group in MyGroups)
                     {
-                        group.Shortcuts.Remove(item);
+                        if (group.Shortcuts.Contains(item))
+                        {
+                            group.Shortcuts.Remove(item);
+                        }
                     }
-                }
 
-                // Ensure it's removed from search results too
-                if (_searchResultGroup.Shortcuts.Contains(item))
-                {
-                    _searchResultGroup.Shortcuts.Remove(item);
-                }
+                    // Ensure it's removed from search results too
+                    if (_searchResultGroup.Shortcuts.Contains(item))
+                    {
+                        _searchResultGroup.Shortcuts.Remove(item);
+                    }
 
-                SaveStates();
-                UpdateWindowSize();
+                    SaveStates();
+                    UpdateWindowSize();
+                }
             }
         }
 
@@ -385,10 +432,8 @@ namespace ShortcutManager
                 {
                     if (ExtractAndSaveIcon(item, sourcePath: file.Path, force: true))
                     {
-                        
+                        // Success
                     }
-
-                    //regardless of success or failure, save the config
                     SaveStates();
                 }
             }
@@ -404,13 +449,17 @@ namespace ShortcutManager
                 var result = await dialog.ShowAsync();
                 if (result == ContentDialogResult.Primary)
                 {
-                    // Refresh icon in case path or name changed significantly (though name change doesn't affect cache path anymore)
+                    // Refresh icon in case path or name changed
                     ExtractAndSaveIcon(item, force: false);
                     SaveStates();
                 }
             }
         }
 
+        /// <summary>
+        /// Generates a standardized path for an icon file in the centralized cache.
+        /// Uses file extension for non-executables and filename for executables.
+        /// </summary>
         private string GetIconCachePath(string filePath)
         {
             if (string.IsNullOrEmpty(filePath)) return null;
@@ -428,11 +477,14 @@ namespace ShortcutManager
                 fileName = $"ext_{extension}.ico";
             }
 
-            // Sanitize Name for filename just in case
+            // Sanitize filename
             fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
             return Path.Combine(iconsDir, fileName);
         }
 
+        /// <summary>
+        /// Extracts an icon from a file and saves it to the centralized cache.
+        /// </summary>
         private bool ExtractAndSaveIcon(ShortcutItem item, string sourcePath = null, bool force = false)
         {
             try
@@ -444,6 +496,7 @@ namespace ShortcutManager
                 string iconPath = GetIconCachePath(item.Path);
                 if (iconPath == null) return false;
 
+                // Skip extraction if icon already exists and we're not forcing a refresh
                 if (!force && File.Exists(iconPath) && sourcePath == null)
                 {
                     item.Icon = iconPath;
@@ -466,7 +519,6 @@ namespace ShortcutManager
                     {
                         if (icon != null)
                         {
-                            // Overwrite existing file
                             using (var fs = new FileStream(iconPath, FileMode.Create))
                             {
                                 icon.Save(fs);
@@ -475,7 +527,7 @@ namespace ShortcutManager
                     }
                 }
 
-                // Update the icon path. To force UI refresh if path is same, we trigger property change
+                // Force UI refresh by triggering property change (even if path is identical)
                 item.Icon = ""; 
                 item.Icon = iconPath;
                 return true;
@@ -502,6 +554,7 @@ namespace ShortcutManager
                 }
                 else
                 {
+                    // Find all shortcuts matching name or path
                     var matches = MyGroups
                         .Where(g => g.GroupName != "Search Result")
                         .SelectMany(g => g.Shortcuts)
@@ -518,6 +571,7 @@ namespace ShortcutManager
                             MyGroups.Insert(0, _searchResultGroup);
                         }
                         
+                        // Collapse other groups while searching
                         _isUpdatingStates = true;
                         foreach (var group in MyGroups)
                         {
@@ -539,6 +593,7 @@ namespace ShortcutManager
 
         private void SearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
         {
+            // Launch first match on Enter
             var firstMatch = _searchResultGroup.Shortcuts.FirstOrDefault();
             if (firstMatch == null)
             {
@@ -559,6 +614,7 @@ namespace ShortcutManager
             if (_isUpdatingStates) return;
             _isUpdatingStates = true;
 
+            // Accordion behavior: only one group expanded at a time
             if (sender.DataContext is ShortcutGroup expandedGroup)
             {
                 foreach (var group in MyGroups)
@@ -587,6 +643,7 @@ namespace ShortcutManager
             {
                 if (group.Shortcuts.Count == 0) return;
 
+                // Confirm if launching a large number of items
                 if (group.Shortcuts.Count > 5)
                 {
                     ContentDialog confirmDialog = new ContentDialog
@@ -615,7 +672,6 @@ namespace ShortcutManager
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
             {
                 int index = MyGroups.IndexOf(group);
-                // If Search Results is at 0, don't move past 1
                 int limit = MyGroups.Contains(_searchResultGroup) ? 1 : 0;
 
                 if (index > limit)
@@ -692,6 +748,25 @@ namespace ShortcutManager
             await dialog.ShowAsync();
         }
 
+        private async void MenuExit_Click(object sender, RoutedEventArgs e)
+        {
+            ContentDialog exitDialog = new ContentDialog
+            {
+                Title = "Exit Shortcut Manager",
+                Content = "Are you sure you want to exit the application?",
+                PrimaryButtonText = "Exit",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await exitDialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                this.Close();
+            }
+        }
+
         private async void MenuGroupRename_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
@@ -744,7 +819,6 @@ namespace ShortcutManager
             if (sender is FrameworkElement fe && fe.DataContext is ShortcutItem item)
             {
                 _draggedItem = item;
-                // Find source group
                 _draggedFromGroup = MyGroups.FirstOrDefault(g => g.Shortcuts.Contains(item));
                 
                 e.Data.SetText(item.Id);
@@ -769,7 +843,6 @@ namespace ShortcutManager
         {
             if (_draggedItem != null && sender is FrameworkElement fe && fe.DataContext is ShortcutItem targetItem)
             {
-                // Find target group
                 var targetGroup = MyGroups.FirstOrDefault(g => g.Shortcuts.Contains(targetItem));
                 if (targetGroup != null && _draggedFromGroup != null)
                 {
@@ -808,6 +881,7 @@ namespace ShortcutManager
 
         private async void Expander_Drop(object sender, DragEventArgs e)
         {
+            // Internal Move: Shortcut to Group
             if (_draggedItem != null && sender is Expander expander && expander.DataContext is ShortcutGroup targetGroup)
             {
                 if (_draggedFromGroup != null && _draggedFromGroup != targetGroup)
@@ -823,6 +897,7 @@ namespace ShortcutManager
                 return;
             }
 
+            // External Move: File/Folder Drop
             if (e.DataView.Contains(StandardDataFormats.StorageItems))
             {
                 var items = await e.DataView.GetStorageItemsAsync();
@@ -841,6 +916,7 @@ namespace ShortcutManager
                             {
                                 try
                                 {
+                                    // Resolve Windows shortcuts to their targets
                                     var resolved = ResolveLnk(targetPath);
                                     if (!string.IsNullOrEmpty(resolved.target))
                                     {
@@ -872,6 +948,9 @@ namespace ShortcutManager
             }
         }
 
+        /// <summary>
+        /// Resolves a Windows .lnk file to its actual target path and arguments.
+        /// </summary>
         private (string target, string args) ResolveLnk(string lnkPath)
         {
             try
@@ -900,7 +979,6 @@ namespace ShortcutManager
 
         private void ToggleVisibilityCommand_ExecuteRequested(XamlUICommand sender, ExecuteRequestedEventArgs args)
         {
-            // Ensure we are on the UI Thread
             this.DispatcherQueue.TryEnqueue(() =>
             {
                 if (this.AppWindow.IsVisible)
@@ -909,12 +987,8 @@ namespace ShortcutManager
                 }
                 else
                 {
-                    // Show the window
                     this.AppWindow.Show();
                     this.Activate();
-
-                    // Re-apply the 'Borderless/Translucent' fixes just in case
-                    // the window state reset brought the title bar back
                     this.AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
 
                     if (this.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
@@ -942,7 +1016,6 @@ namespace ShortcutManager
             }
             else
             {
-                // Close the sidebar or clear text
                 this.AppWindow.Hide();
             }
         }
@@ -953,6 +1026,9 @@ namespace ShortcutManager
             args.Handled = true;
         }
 
+        /// <summary>
+        /// Handles application-wide keyboard shortcuts.
+        /// </summary>
         private void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
         {
             if (e.Key == Windows.System.VirtualKey.Escape)
@@ -962,12 +1038,10 @@ namespace ShortcutManager
                 return;
             }
 
-            // F1 - F5: Toggle Groups
+            // F1 - F5: Toggle Expansion of Custom Groups
             if (e.Key >= Windows.System.VirtualKey.F1 && e.Key <= Windows.System.VirtualKey.F5)
             {
                 int index = (int)e.Key - (int)Windows.System.VirtualKey.F1;
-                
-                // Skip search results if present
                 int offset = MyGroups.Contains(_searchResultGroup) ? 1 : 0;
                 int actualIndex = index + offset;
 
@@ -980,7 +1054,7 @@ namespace ShortcutManager
                 return;
             }
 
-            // Alt + 1-5: Launch Shortcuts
+            // Alt + 1-5: Quick Launch
             var altState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
             bool isAltPressed = altState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
@@ -989,7 +1063,7 @@ namespace ShortcutManager
                 int index = (int)e.Key - (int)Windows.System.VirtualKey.Number1;
                 ShortcutItem? itemToLaunch = null;
 
-                // Priority 1: Search results
+                // 1. Prioritize Search Results if active
                 if (MyGroups.Contains(_searchResultGroup))
                 {
                     if (index < _searchResultGroup.Shortcuts.Count)
@@ -999,7 +1073,7 @@ namespace ShortcutManager
                 }
                 else
                 {
-                    // Priority 2: Currently expanded group
+                    // 2. Fallback to currently expanded custom group
                     var expandedGroup = MyGroups.FirstOrDefault(g => g.IsExpanded);
                     if (expandedGroup != null && index < expandedGroup.Shortcuts.Count)
                     {

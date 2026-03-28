@@ -12,7 +12,9 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 
 ## Features
 
-- **📂 Group Management:** Create, rename, delete, and rearrange groups using an intuitive context menu.
+- **📂 Group Management:**
+  - Create, rename, delete, and rearrange groups using an intuitive context menu.
+  - **Launch All:** Launch every application in a group with one click (includes a safety confirmation for groups with >5 items).
 - **🖱️ Drag & Drop:**
   - Drag files, folders, or Windows shortcuts (`.lnk`) directly onto a group to add them.
   - Rearrange shortcuts within a group or move them between groups by dragging icons.
@@ -31,9 +33,12 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 - **📏 Dynamic Sizing:** The window automatically adjusts its height based on the number of shortcuts and expanded groups.
 - **🎹 Keyboard & Mouse Friendly:** 
   - `Double-Click`: Launch a shortcut.
-  - `Esc`: Clear search or hide the window.
+  - `Esc`: Clear selection, clear search, or hide the window.
   - `Enter`: Launch the top search result.
   - `Right-Click`: Access comprehensive context menus for shortcuts, groups, and the application.
+  - **Hotkeys:**
+    - `F1 - F5`: Toggle expansion of the first 5 shortcut groups.
+    - `Alt + 1 - 5`: Quick-launch the first 5 items (from search results or the active group).
 
 ## Tech Stack
 
@@ -43,9 +48,16 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 - **Tray Icon:** [H.NotifyIcon.WinUI](https://github.com/HavenDV/H.NotifyIcon)
 - **Serialization:** System.Text.Json
 
-## Configuration
+## Configuration & Settings
 
-The application loads shortcuts from `shortcuts.json`.
+The application stores its configuration in `shortcuts.json` and provides a built-in Settings menu.
+
+### Settings Dialog
+Access by right-clicking the application background:
+- **Run at Windows Startup:** Automatically creates/removes a shortcut in the Windows Startup folder.
+- **Open Application Directory:** Quickly access the app files.
+- **Open Startup Directory:** Manage the startup shortcut manually.
+- **Version Info:** Displays the current build number.
 
 ### JSON Structure
 
@@ -68,16 +80,6 @@ The application loads shortcuts from `shortcuts.json`.
 ]
 ```
 
-- `GroupName`: The display name for the group.
-- `IsExpanded`: Initial state of the group expander.
-- `Shortcuts`:
-    - `text`: Display name of the shortcut.
-    - `application`: Full path to the executable or file.
-    - `icon`: Relative path to the cached icon file.
-    - `args`: Command-line arguments.
-    - `runasAdmin`: Set to `true` to prompt for UAC on launch.
-    - `id`: Unique identifier for management and dragging.
-
 ## Getting Started
 
 ### Prerequisites
@@ -96,4 +98,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 # Backlog Features
 - Clean up unused icons
-- Keyboard navigation for shortcut items
+- Support for custom group icons
+- Keyboard navigation for shortcut items (Arrow keys)

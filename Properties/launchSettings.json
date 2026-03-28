@@ -1,9 +1,9 @@
 {
   "profiles": {
-    "TestApp1 (Package)": {
+    "Shortcut Manager (Package)": {
       "commandName": "MsixPackage"
     },
-    "TestApp1 (Unpackaged)": {
+    "Shortcut Manager (Unpackaged)": {
       "commandName": "Project"
     }
   }

@@ -29,6 +29,12 @@
                         <FontIcon Glyph="&#xE713;" FontFamily="Segoe Fluent Icons" />
                     </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Exit" Click="MenuExit_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE7E8;" FontFamily="Segoe Fluent Icons" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
             </MenuFlyout>
         </Grid.ContextFlyout>
         
