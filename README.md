@@ -35,14 +35,16 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - Clean, borderless design using **Desktop Acrylic** backdrop.
   - **Windows 11 Fluent Icons** (Segoe Fluent Icons) throughout the interface.
   - Visual feedback with hover and selection highlights.
-- **📥 System Tray Integration:** Stays out of your way in the system tray. Click the tray icon to toggle visibility.
+- **📥 System Tray Integration:** 
+  - Stays out of your way in the system tray.
+  - **Intelligent Toggling:** Clicking the tray icon brings the window to the absolute front if it's minimized or behind other windows, otherwise it toggles visibility.
 - **⚡ Admin Support:** Option to launch specific applications with administrative privileges.
 - **📏 Dynamic Sizing:** The window automatically adjusts its height based on the number of shortcuts and expanded groups.
 - **🎹 Keyboard & Mouse Friendly:** 
   - `Double-Click`: Launch a shortcut.
   - `Enter`: Launch the currently highlighted shortcut.
   - `Esc`: Clear selection, clear search, or hide the window.
-  - `Right-Click`: Access comprehensive context menus for shortcuts, groups, and the application.
+  - `Right-Click`: Access comprehensive context menus for shortcuts, groups, and the application background.
   - **Navigation:** Use **Arrow Keys** (Left, Right, Up, Down) to navigate between shortcuts and across different groups.
   - **Hotkeys:**
     - `F1 - F5`: Toggle expansion of the first 5 shortcut groups.
@@ -52,11 +54,12 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 ## Tech Stack
 
 - **Framework:** .NET 10 + WinUI 3 (Windows App SDK)
+- **Target OS:** Windows 11 (build 22000+)
 - **UI Components:** Microsoft UI Xaml
 - **Icons:** Segoe Fluent Icons
 - **Tray Icon:** [H.NotifyIcon.WinUI](https://github.com/HavenDV/H.NotifyIcon)
 - **Logging:** Serilog
-- **Serialization:** System.Text.Json (with Source Generators for NativeAOT support)
+- **Serialization:** System.Text.Json (with Source Generators for NativeAOT/Trim support)
 
 ## Configuration & Settings
 
@@ -71,11 +74,24 @@ Access by right-clicking the application background:
 - **Open Application/Startup Directory:** Quick access to system folders.
 - **Version Info:** Displays the current version.
 
+## Getting Started
+
+### Prerequisites
+- Windows 11 version 21H2 (build 22000) or later.
+- [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
+
+### Running the App
+1. Clone the repository.
+2. Open `ShortcutManager.sln` in Visual Studio 2022.
+3. Build and Run the `ShortcutManager` project (Targeting x64).
+4. Locate the star icon in your system tray to open the manager.
+
 ## License
 
 This project is licensed under the MIT License.
 
 # Backlog Features
+- Keyboard navigation improvements (Tab support)
 - Support for custom group icons
 - Support for URL-based shortcuts
 - Global hotkey to show/hide the application

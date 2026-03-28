@@ -31,10 +31,13 @@ namespace ShortcutManager
 {
     /// <summary>
     /// The main window of the application, managing shortcut groups, searching, and interactions.
+    /// Supports high-quality icon management, complex drag-and-drop, and full keyboard navigation.
     /// </summary>
     public sealed partial class MainWindow : Window
     {
-        // Win32 API for high-quality icon extraction
+        #region Win32 API Imports
+
+        // For high-quality icon extraction (32-bit with Alpha)
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
 
@@ -58,6 +61,7 @@ namespace ShortcutManager
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool DestroyIcon(IntPtr hIcon);
 
+        // For intelligent window foreground management
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
@@ -74,6 +78,8 @@ namespace ShortcutManager
 
         private const int SW_RESTORE = 9;
         private const int SW_SHOW = 5;
+
+        #endregion
 
         // Main data collection for the UI
         public ObservableCollection<ShortcutGroup> MyGroups { get; set; } = new();
@@ -272,7 +278,7 @@ namespace ShortcutManager
                         )
                     }).ToList();
 
-                // Use source generator for serialization
+                // Use source generator for serialization to support NativeAOT/Trimming
                 string json = JsonSerializer.Serialize(groupsToSave, ShortcutSerializationContext.Default.ListShortcutGroup);
                 File.WriteAllText(jsonPath, json);
             }
@@ -351,7 +357,7 @@ namespace ShortcutManager
             }
         }
 
-        private void SelectShortcut(ShortcutItem item, Grid grid)
+        private void SelectShortcut(ShortcutItem item, Grid? grid)
         {
             if (_selectedItem != null && _selectedItem != item)
             {
@@ -1426,8 +1432,11 @@ namespace ShortcutManager
             }
         }
 
-
-        private void ToggleVisibilityCommand_ExecuteRequested(XamlUICommand sender, ExecuteRequestedEventArgs args)
+        /// <summary>
+        /// Toggles window visibility. Intelligent foreground management:
+        /// Brings to front if visible but backgrounded/minimized, otherwise toggles show/hide.
+        /// </summary>
+        private void ToggleSidebarCommand_ExecuteRequested(XamlUICommand sender, ExecuteRequestedEventArgs args)
         {
             this.DispatcherQueue.TryEnqueue(() =>
             {
@@ -1439,7 +1448,6 @@ namespace ShortcutManager
 
                     if (foregroundHWnd != hWnd || isMinimized)
                     {
-                        // Window is visible but either minimized or behind other windows
                         if (isMinimized)
                         {
                             ShowWindow(hWnd, SW_RESTORE);
@@ -1453,13 +1461,11 @@ namespace ShortcutManager
                     }
                     else
                     {
-                        // Window is already in front - hide it
                         this.AppWindow.Hide();
                     }
                 }
                 else
                 {
-                    // Window is hidden - show and focus
                     this.AppWindow.Show();
                     this.Activate();
                     SetForegroundWindow(hWnd);
