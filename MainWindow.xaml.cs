@@ -10,6 +10,9 @@ using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
@@ -17,6 +20,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Storage.Pickers;
 using WinRT.Interop;
 
 namespace ShortcutManager
@@ -27,7 +31,9 @@ namespace ShortcutManager
         private ShortcutGroup _searchResultGroup = new() { GroupName = "Search Result", IsExpanded = true };
         private bool _isUpdatingStates = false;
         private AppWindow _appWindow;
-        private double dblMinHeight = 0.50;
+        private double _appMinHeightMultiplier = 0.50;
+
+        private string shortcutFile = Path.Combine(AppContext.BaseDirectory, "shortcuts.json");
 
         public MainWindow()
         {
@@ -49,6 +55,7 @@ namespace ShortcutManager
                     presenter.IsResizable = false;
                     presenter.IsMinimizable = true;
                     presenter.IsMaximizable = false;
+                    presenter.IsAlwaysOnTop = true;
                     presenter.SetBorderAndTitleBar(false, false);
                 }
 
@@ -57,7 +64,7 @@ namespace ShortcutManager
                 {
                     var workArea = displayArea.WorkArea;
                     int width = 1600;
-                    int minHeight = (int)(workArea.Height * dblMinHeight);
+                    int minHeight = (int)(workArea.Height * _appMinHeightMultiplier);
                     int x = workArea.X + (workArea.Width - width) / 2;
                     int y = workArea.Y + (workArea.Height - 600) / 2 - 50; 
                     _appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, minHeight));
@@ -67,7 +74,7 @@ namespace ShortcutManager
             // Set system backdrop to Acrylic
             this.SystemBackdrop = new DesktopAcrylicBackdrop();
 
-            LoadMigratedData();
+            LoadShortcuts();
             GroupsList.ItemsSource = MyGroups;
             
             this.DispatcherQueue.TryEnqueue(() => UpdateWindowSize());
@@ -97,14 +104,14 @@ namespace ShortcutManager
             args.Handled = true;
         }
 
-        private void LoadMigratedData()
+        private void LoadShortcuts()
         {
             try
             {
-                string jsonPath = Path.Combine(AppContext.BaseDirectory, "tmp", "shortcuts.json");
-                if (!File.Exists(jsonPath))
+                string jsonPath = shortcutFile;
+                if (!File.Exists(shortcutFile))
                 {
-                    jsonPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "shortcuts.json"));
+                    jsonPath = Path.GetFullPath(shortcutFile);
                 }
 
                 if (File.Exists(jsonPath))
@@ -119,11 +126,16 @@ namespace ShortcutManager
                         {
                             foreach (var item in group.Shortcuts)
                             {
-                                if (!string.IsNullOrEmpty(item.Icon)) {
-                                    string defaultIconLocation = Path.Combine(AppContext.BaseDirectory, "icons", item.Icon);
-                                    if (!File.Exists(item.Icon) && File.Exists(defaultIconLocation)) {
-                                        item.Icon = defaultIconLocation;
-                                    }
+                                // Resolve relative path to absolute for UI
+                                if (!string.IsNullOrEmpty(item.Icon) && !Path.IsPathRooted(item.Icon))
+                                {
+                                    item.Icon = Path.Combine(AppContext.BaseDirectory, item.Icon);
+                                }
+
+                                // If icon is missing or not found, try to resolve from cache or extract it
+                                if (string.IsNullOrEmpty(item.Icon) || !File.Exists(item.Icon))
+                                {
+                                    ExtractAndSaveIcon(item, null, false);
                                 }
                             }
                             MyGroups.Add(group);
@@ -137,19 +149,46 @@ namespace ShortcutManager
             }
         }
 
+        private string GetRelativePath(string fullPath)
+        {
+            if (string.IsNullOrEmpty(fullPath)) return fullPath;
+            string baseDir = AppContext.BaseDirectory;
+            if (fullPath.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase))
+            {
+                return Path.GetRelativePath(baseDir, fullPath);
+            }
+            return fullPath;
+        }
+
         private void SaveStates()
         {
             if (_isUpdatingStates) return;
 
             try
             {
-                string jsonPath = Path.Combine(AppContext.BaseDirectory, "tmp", "shortcuts.json");
-                if (!File.Exists(jsonPath))
+                string jsonPath = shortcutFile;
+                if (!File.Exists(shortcutFile))
                 {
-                    jsonPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "shortcuts.json"));
+                    jsonPath = Path.GetFullPath(shortcutFile);
                 }
 
-                var groupsToSave = MyGroups.Where(g => g.GroupName != "Search Result").ToList();
+                // Create a clone with relative paths for saving
+                var groupsToSave = MyGroups.Where(g => g.GroupName != "Search Result")
+                    .Select(g => new ShortcutGroup {
+                        GroupName = g.GroupName,
+                        IsExpanded = g.IsExpanded,
+                        Shortcuts = new ObservableCollection<ShortcutItem>(
+                            g.Shortcuts.Select(s => new ShortcutItem {
+                                Name = s.Name,
+                                Path = s.Path,
+                                Icon = GetRelativePath(s.Icon),
+                                RunAsAdmin = s.RunAsAdmin,
+                                Arguments = s.Arguments,
+                                Id = s.Id
+                            })
+                        )
+                    }).ToList();
+
                 string json = JsonSerializer.Serialize(groupsToSave, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(jsonPath, json);
             }
@@ -172,7 +211,7 @@ namespace ShortcutManager
                     var workArea = displayArea.WorkArea;
                     int currentY = _appWindow.Position.Y;
                     
-                    int minHeight = (int)(workArea.Height * dblMinHeight);
+                    int minHeight = (int)(workArea.Height * _appMinHeightMultiplier);
                     int maxHeight = workArea.Height - (currentY - workArea.Y) - 20; 
                     
                     int newHeight = Math.Max(minHeight, (int)desiredHeight + 10);
@@ -209,7 +248,204 @@ namespace ShortcutManager
             }
         }
 
-        private void SidebarSearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+        private void MenuOpen_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
+            {
+                ExecuteShortcut(item);
+            }
+        }
+
+        private void MenuOpenDir_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item && !string.IsNullOrEmpty(item.Path))
+            {
+                try
+                {
+                    string folder = Path.GetDirectoryName(item.Path);
+                    if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder))
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "explorer.exe",
+                            Arguments = folder,
+                            UseShellExecute = true
+                        });
+                    }
+                    else if (File.Exists(item.Path))
+                    {
+                        // Fallback: use /select if Path.GetDirectoryName failed but file exists
+                         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "explorer.exe",
+                            Arguments = $"/select,\"{item.Path}\"",
+                            UseShellExecute = true
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error opening directory: {ex.Message}");
+                }
+            }
+        }
+
+        private void MenuRemove_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
+            {
+                // Remove from all groups
+                foreach (var group in MyGroups)
+                {
+                    if (group.Shortcuts.Contains(item))
+                    {
+                        group.Shortcuts.Remove(item);
+                    }
+                }
+
+                // Ensure it's removed from search results too
+                if (_searchResultGroup.Shortcuts.Contains(item))
+                {
+                    _searchResultGroup.Shortcuts.Remove(item);
+                }
+
+                SaveStates();
+                UpdateWindowSize();
+            }
+        }
+
+        private void MenuRegenerateIcon_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
+            {
+                if (ExtractAndSaveIcon(item, force: true))
+                {
+                    SaveStates();
+                }
+            }
+        }
+
+        private async void MenuChangeIcon_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
+            {
+                var picker = new FileOpenPicker();
+                var hWnd = WindowNative.GetWindowHandle(this);
+                InitializeWithWindow.Initialize(picker, hWnd);
+
+                picker.ViewMode = PickerViewMode.Thumbnail;
+                picker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
+                picker.FileTypeFilter.Add(".ico");
+                picker.FileTypeFilter.Add(".exe");
+
+                var file = await picker.PickSingleFileAsync();
+                if (file != null)
+                {
+                    if (ExtractAndSaveIcon(item, sourcePath: file.Path, force: true))
+                    {
+                        
+                    }
+
+                    //regardless of success or failure, save the config
+                    SaveStates();
+                }
+            }
+        }
+
+        private async void MenuProperties_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
+            {
+                var dialog = new PropertiesDialog(item);
+                dialog.XamlRoot = this.Content.XamlRoot;
+
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                    // Refresh icon in case path or name changed significantly (though name change doesn't affect cache path anymore)
+                    ExtractAndSaveIcon(item, force: false);
+                    SaveStates();
+                }
+            }
+        }
+
+        private string GetIconCachePath(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath)) return null;
+
+            string iconsDir = Path.Combine(AppContext.BaseDirectory, "icons");
+            string extension = Path.GetExtension(filePath).ToLower().TrimStart('.');
+            string fileName;
+
+            if (extension == "exe")
+            {
+                fileName = Path.GetFileNameWithoutExtension(filePath).ToLower() + ".ico";
+            }
+            else
+            {
+                fileName = $"ext_{extension}.ico";
+            }
+
+            // Sanitize Name for filename just in case
+            fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
+            return Path.Combine(iconsDir, fileName);
+        }
+
+        private bool ExtractAndSaveIcon(ShortcutItem item, string sourcePath = null, bool force = false)
+        {
+            try
+            {
+                string effectiveSource = sourcePath ?? item.Path;
+                if (string.IsNullOrEmpty(effectiveSource) || !File.Exists(effectiveSource))
+                    return false;
+
+                string iconPath = GetIconCachePath(item.Path);
+                if (iconPath == null) return false;
+
+                if (!force && File.Exists(iconPath) && sourcePath == null)
+                {
+                    item.Icon = iconPath;
+                    return true;
+                }
+
+                string iconsDir = Path.GetDirectoryName(iconPath);
+                if (!Directory.Exists(iconsDir))
+                {
+                    Directory.CreateDirectory(iconsDir);
+                }
+
+                if (Path.GetExtension(effectiveSource).ToLower() == ".ico")
+                {
+                    File.Copy(effectiveSource, iconPath, true);
+                }
+                else
+                {
+                    using (var icon = Icon.ExtractAssociatedIcon(effectiveSource))
+                    {
+                        if (icon != null)
+                        {
+                            // Overwrite existing file
+                            using (var fs = new FileStream(iconPath, FileMode.Create))
+                            {
+                                icon.Save(fs);
+                            }
+                        }
+                    }
+                }
+
+                // Update the icon path. To force UI refresh if path is same, we trigger property change
+                item.Icon = ""; 
+                item.Icon = iconPath;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error extracting icon: {ex.Message}");
+            }
+            return false;
+        }
+
+        private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
         {
             if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
             {
@@ -303,14 +539,14 @@ namespace ShortcutManager
             UpdateWindowSize();
         }
 
-        private void Exit_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-        {
-            if (MyTrayIcon != null)
-            {
-                MyTrayIcon.Dispose();
-            }
-            Microsoft.UI.Xaml.Application.Current.Exit();
-        }
+        //private void Exit_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        //{
+        //    if (MyTrayIcon != null)
+        //    {
+        //        MyTrayIcon.Dispose();
+        //    }
+        //    Microsoft.UI.Xaml.Application.Current.Exit();
+        //}
 
         private void ToggleSidebarCommand_ExecuteRequested(XamlUICommand sender, ExecuteRequestedEventArgs args)
         {

@@ -41,7 +41,7 @@
                     PlaceholderText="Search shortcuts..."
                     QueryIcon="Find"
                     Margin="10"
-                    TextChanged="SidebarSearchBox_TextChanged"
+                    TextChanged="SearchBox_TextChanged"
                     QuerySubmitted="SidebarSearchBox_QuerySubmitted"
                     Background="{ThemeResource SystemControlAcrylicElementBrush}"/>
 
@@ -73,6 +73,42 @@
                     BorderBrush="Transparent"
                     VerticalAlignment="Top"
                     ToolTipService.ToolTip="{Binding Path}">
+
+                                            <Button.ContextFlyout>
+                                                <MenuFlyout>
+                                                    <MenuFlyoutItem Text="Open" Click="MenuOpen_Click">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Play" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="Open in directory" Click="MenuOpenDir_Click">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Folder" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="Re-generate Icon" Click="MenuRegenerateIcon_Click">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Refresh" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="Change Icon" Click="MenuChangeIcon_Click">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Edit" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="Properties" Click="MenuProperties_Click">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Setting" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutSeparator />
+                                                    <MenuFlyoutItem Text="Remove" Click="MenuRemove_Click" Foreground="Red">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <SymbolIcon Symbol="Delete" Foreground="Red" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                </MenuFlyout>
+                                            </Button.ContextFlyout>
 
                                             <StackPanel Width="100" Spacing="5">
                                                 <Image Source="{Binding Icon}" 

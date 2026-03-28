@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="ShortcutManager.PropertiesDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ShortcutManager"
+    Title="Shortcut Properties"
+    PrimaryButtonText="Save"
+    SecondaryButtonText="Cancel"
+    DefaultButton="Primary">
+
+    <StackPanel Spacing="10" Margin="0,10,0,0" Width="400">
+        <TextBox x:Name="NameTextBox" Header="Shortcut Name" PlaceholderText="Enter name..."/>
+        <TextBox x:Name="PathTextBox" Header="Shortcut Path" PlaceholderText="C:\Path\To\File.exe"/>
+        <TextBox x:Name="ArgsTextBox" Header="Arguments" PlaceholderText="--example-arg"/>
+        <CheckBox x:Name="AdminCheckBox" Content="Run as Administrator"/>
+        <TextBlock x:Name="ErrorTextBlock" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
+    </StackPanel>
+</ContentDialog>
