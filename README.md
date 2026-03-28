@@ -15,6 +15,7 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 - **📂 Group Management:**
   - Create, rename, delete, and rearrange groups using an intuitive context menu.
   - **Launch All:** Launch every application in a group with one click (includes a safety confirmation for groups with >5 items).
+  - **Auto-Initialization:** Dragging items into an empty application automatically creates a "Default" group.
 - **🖱️ Drag & Drop:**
   - Drag files, folders, or Windows shortcuts (`.lnk`) directly onto a group to add them.
   - Rearrange shortcuts within a group or move them between groups by dragging icons.
@@ -23,10 +24,13 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - Automatically verifies file/directory existence before performing any action.
   - Interactive recovery options: If a path is broken, you can choose to **Remove** the shortcut or **Edit** its properties immediately.
 - **🖼️ Smart Icon Cache:** 
-  - Centralized icon extraction and caching based on file extensions or executable names.
+  - **High-Quality Extraction:** Uses Win32 SHGetFileInfo for full-color, 32-bit alpha-transparent icons.
+  - **PNG Storage:** Icons are cached as PNG files to preserve transparency and quality.
+  - Centralized caching based on file extensions or executable names.
   - Portable configuration using relative paths for cached icons.
-  - Manually change icons by selecting `.ico` files or extracting from other executables.
-- **🔍 Fast Search:** Quickly find any shortcut with a built-in search box. Press `Enter` to launch the first match.
+- **🔍 Fast Search:** 
+  - Quickly find any shortcut with a built-in search box.
+  - **Auto-Highlight:** The first search result is automatically selected for immediate launching.
 - **🎨 Modern Fluent UI:** 
   - Clean, borderless design using **Desktop Acrylic** backdrop.
   - **Windows 11 Fluent Icons** (Segoe Fluent Icons) throughout the interface.
@@ -36,9 +40,10 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 - **📏 Dynamic Sizing:** The window automatically adjusts its height based on the number of shortcuts and expanded groups.
 - **🎹 Keyboard & Mouse Friendly:** 
   - `Double-Click`: Launch a shortcut.
+  - `Enter`: Launch the currently highlighted shortcut.
   - `Esc`: Clear selection, clear search, or hide the window.
-  - `Enter`: Launch the top search result.
   - `Right-Click`: Access comprehensive context menus for shortcuts, groups, and the application.
+  - **Navigation:** Use **Arrow Keys** (Left, Right, Up, Down) to navigate between shortcuts and across different groups.
   - **Hotkeys:**
     - `F1 - F5`: Toggle expansion of the first 5 shortcut groups.
     - `Alt + 1 - 5`: Quick-launch the first 5 items (from search results or the active group).
@@ -60,30 +65,17 @@ The application stores its configuration in `shortcuts.json` and provides a buil
 ### Settings Dialog
 Access by right-clicking the application background:
 - **Run at Windows Startup:** Automatically creates/removes a shortcut in the Windows Startup folder.
-- **Open Application Directory:** Quickly access the app files.
-- **Open Startup Directory:** Manage the startup shortcut manually.
-- **Version Info:** Displays the current version (GitVersion).
-
-## Getting Started
-
-### Prerequisites
-- Windows 10 version 1809 (build 17763) or later.
-- [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
-
-### Running the App
-1. Clone the repository.
-2. Open `ShortcutManager.sln` in Visual Studio 2022.
-3. Build and Run the `ShortcutManager` project.
-4. Locate the star icon in your system tray to open the manager.
+- **Regenerate All Icons:** Re-extracts all icons using the high-quality Win32 method.
+- **Clean Up Unused Icons:** Removes orphaned icon files from the cache.
+- **Remove Invalid Shortcuts:** Scans and prunes shortcuts with broken paths.
+- **Open Application/Startup Directory:** Quick access to system folders.
+- **Version Info:** Displays the current version.
 
 ## License
 
 This project is licensed under the MIT License.
 
 # Backlog Features
-- Keyboard [Del] to Delete shortcut items.
-- On lose focus, hide application.
+- Support for custom group icons
 - Support for URL-based shortcuts
-
-# Quirky things
-- will update here...
+- Global hotkey to show/hide the application

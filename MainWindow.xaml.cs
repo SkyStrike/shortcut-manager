@@ -34,6 +34,7 @@ namespace ShortcutManager
     /// </summary>
     public sealed partial class MainWindow : Window
     {
+        // Win32 API for high-quality icon extraction
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
 
@@ -96,7 +97,6 @@ namespace ShortcutManager
                     presenter.IsResizable = false;
                     presenter.IsMinimizable = true;
                     presenter.IsMaximizable = false;
-                    //presenter.IsAlwaysOnTop = true;
                     presenter.SetBorderAndTitleBar(false, false);
                 }
 
@@ -131,7 +131,6 @@ namespace ShortcutManager
                     MyTrayIcon.Dispose();
                 }
             };
-
         }
 
         private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
@@ -176,6 +175,7 @@ namespace ShortcutManager
                 if (File.Exists(jsonPath))
                 {
                     string json = File.ReadAllText(jsonPath);
+                    // Use source generator for deserialization to support NativeAOT/Trimming
                     var groups = JsonSerializer.Deserialize(json, ShortcutSerializationContext.Default.ListShortcutGroup);
 
                     if (groups != null)
@@ -272,7 +272,7 @@ namespace ShortcutManager
         {
             if (this.Content is FrameworkElement root && _appWindow != null)
             {
-                root.Measure(new Windows.Foundation.Size(_appWindow.Size.Width, double.PositiveInfinity));
+                root.Measure(new Size(_appWindow.Size.Width, double.PositiveInfinity));
                 double desiredHeight = root.DesiredSize.Height;
 
                 var displayArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
@@ -301,14 +301,14 @@ namespace ShortcutManager
         private void ExecuteShortcut(ShortcutItem item) {
             try
             {
-                var startInfo = new System.Diagnostics.ProcessStartInfo
+                var startInfo = new ProcessStartInfo
                 {
                     FileName = item.Path,
                     Arguments = item.Arguments,
                     UseShellExecute = true,
                     Verb = item.RunAsAdmin ? "runas" : ""
                 };
-                System.Diagnostics.Process.Start(startInfo);
+                Process.Start(startInfo);
             }
             catch (System.ComponentModel.Win32Exception ex) 
             { 
@@ -350,6 +350,7 @@ namespace ShortcutManager
 
         /// <summary>
         /// Logic for keyboard navigation using arrow keys.
+        /// Moves selection within the current group and transitions between groups.
         /// </summary>
         private void NavigateShortcuts(Windows.System.VirtualKey key)
         {
@@ -471,7 +472,7 @@ namespace ShortcutManager
         }
 
         /// <summary>
-        /// Accurately calculates the number of items per row by inspecting the actual layout.
+        /// Estimates the number of items per row based on current window width and layout properties.
         /// </summary>
         private int CalculateItemsPerRow()
         {
@@ -482,9 +483,7 @@ namespace ShortcutManager
                     var scrollViewer = rootGrid.Children.OfType<ScrollViewer>().FirstOrDefault();
                     if (scrollViewer != null && scrollViewer.ViewportWidth > 0)
                     {
-                        // The items are arranged in a UniformGridLayout inside an Expander.
-                        // MinItemWidth="110" + MinColumnSpacing="5" = 115px per item slot.
-                        // Expander content usually has some internal padding (approx 16-20px each side).
+                        // Width: 110 (min item) + 5 (column spacing). Padding: ~40px.
                         double availableWidth = scrollViewer.ViewportWidth - 40; 
                         int count = (int)(availableWidth / 115);
                         return Math.Max(1, count);
@@ -493,8 +492,7 @@ namespace ShortcutManager
             }
             catch { }
 
-            // Default fallback for 1600 width
-            return 13; 
+            return 13; // Default fallback for 1600px width
         }
 
         private async void OnShortcutDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -530,7 +528,7 @@ namespace ShortcutManager
                     string folder = Path.GetDirectoryName(item.Path);
                     if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder))
                     {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        Process.Start(new ProcessStartInfo
                         {
                             FileName = "explorer.exe",
                             Arguments = folder,
@@ -540,7 +538,7 @@ namespace ShortcutManager
                     else if (File.Exists(item.Path))
                     {
                         // Fallback: select the file if directory lookup failed
-                         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                         Process.Start(new ProcessStartInfo
                         {
                             FileName = "explorer.exe",
                             Arguments = $"/select,\"{item.Path}\"",
@@ -666,6 +664,9 @@ namespace ShortcutManager
             }
         }
 
+        /// <summary>
+        /// Checks if a path exists. If not, prompts the user to remove the shortcut or edit properties.
+        /// </summary>
         private async Task<bool> EnsurePathValid(ShortcutItem item)
         {
             if (string.IsNullOrEmpty(item.Path) || (!File.Exists(item.Path) && !Directory.Exists(item.Path)))
@@ -848,14 +849,6 @@ namespace ShortcutManager
                             }
                         }
                         _isUpdatingStates = false;
-
-                        // Auto-highlight the first result
-                        ClearSelection();
-                        if (_searchResultGroup.Shortcuts.Any())
-                        {
-                            _selectedItem = _searchResultGroup.Shortcuts[0];
-                            _selectedItem.IsSelected = true;
-                        }
 
                         // Auto-highlight the first result
                         ClearSelection();
@@ -1467,7 +1460,7 @@ namespace ShortcutManager
         }
 
         /// <summary>
-        /// Handles application-wide keyboard shortcuts.
+        /// Handles application-wide keyboard shortcuts and navigation.
         /// </summary>
         private async void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
         {
@@ -1502,15 +1495,6 @@ namespace ShortcutManager
             }
 
             // F1 - F5: Toggle Expansion of Custom Groups
-            if (e.Key == Windows.System.VirtualKey.Left || e.Key == Windows.System.VirtualKey.Right ||
-                e.Key == Windows.System.VirtualKey.Up || e.Key == Windows.System.VirtualKey.Down)
-            {
-                NavigateShortcuts(e.Key);
-                e.Handled = true;
-                return;
-            }
-
-            // F1 - F5: Toggle Expansion of Custom Groups
             if (e.Key >= Windows.System.VirtualKey.F1 && e.Key <= Windows.System.VirtualKey.F5)
             {
                 int index = (int)e.Key - (int)Windows.System.VirtualKey.F1;
@@ -1533,7 +1517,7 @@ namespace ShortcutManager
             if (isAltPressed && e.Key >= Windows.System.VirtualKey.Number1 && e.Key <= Windows.System.VirtualKey.Number5)
             {
                 int index = (int)e.Key - (int)Windows.System.VirtualKey.Number1;
-                ShortcutItem itemToLaunch = null;
+                ShortcutItem? itemToLaunch = null;
 
                 // 1. Prioritize Search Results if active
                 if (MyGroups.Contains(_searchResultGroup))
