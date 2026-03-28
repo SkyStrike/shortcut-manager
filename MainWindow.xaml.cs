@@ -18,6 +18,7 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
@@ -79,6 +80,8 @@ namespace ShortcutManager
             
             this.DispatcherQueue.TryEnqueue(() => UpdateWindowSize());
 
+            this.Activated += MainWindow_Activated;
+
             this.Closed += (s, e) => {
                 if (MyTrayIcon != null)
                 {
@@ -87,19 +90,37 @@ namespace ShortcutManager
             };
         }
 
+        private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
+        {
+            if (args.WindowActivationState == WindowActivationState.Deactivated)
+            {
+                ClearSelection();
+            }
+        }
+
+        private void RootGrid_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            // Only clear if clicking the background grid itself, not its children
+            if (e.OriginalSource == sender)
+            {
+                ClearSelection();
+            }
+        }
+
+        private void ClearSelection()
+        {
+            if (_selectedItem != null)
+            {
+                _selectedItem.IsSelected = false;
+                _selectedItem = null;
+            }
+        }
+
         private void OnEscPressed(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
         {
-            if (!string.IsNullOrEmpty(SidebarSearchBox.Text))
+            if (_appWindow != null)
             {
-                SidebarSearchBox.Text = string.Empty;
-                SidebarSearchBox.Focus(FocusState.Programmatic);
-            }
-            else
-            {
-                if (_appWindow != null)
-                {
-                    _appWindow.Hide();
-                }
+                _appWindow.Hide();
             }
             args.Handled = true;
         }
@@ -240,9 +261,39 @@ namespace ShortcutManager
             catch (System.ComponentModel.Win32Exception) { }
         }
 
-        private void OnShortcutClick(object sender, RoutedEventArgs e)
+        private ShortcutItem? _selectedItem;
+
+        private void Shortcut_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            if (sender is Microsoft.UI.Xaml.Controls.Button btn && btn.DataContext is ShortcutItem item)
+            if (sender is Grid grid && grid.DataContext is ShortcutItem item)
+            {
+                SelectShortcut(item, grid);
+            }
+        }
+
+        private void Shortcut_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
+        {
+            if (sender is Grid grid && grid.DataContext is ShortcutItem item)
+            {
+                SelectShortcut(item, grid);
+            }
+        }
+
+        private void SelectShortcut(ShortcutItem item, Grid grid)
+        {
+            if (_selectedItem != null && _selectedItem != item)
+            {
+                _selectedItem.IsSelected = false;
+            }
+
+            _selectedItem = item;
+            _selectedItem.IsSelected = true;
+            grid.Focus(FocusState.Pointer);
+        }
+
+        private void OnShortcutDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is ShortcutItem item)
             {
                 ExecuteShortcut(item);
             }
@@ -539,6 +590,228 @@ namespace ShortcutManager
             UpdateWindowSize();
         }
 
+        private void MenuGroupMoveUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
+            {
+                int index = MyGroups.IndexOf(group);
+                // If Search Results is at 0, don't move past 1
+                int limit = MyGroups.Contains(_searchResultGroup) ? 1 : 0;
+
+                if (index > limit)
+                {
+                    MyGroups.Remove(group);
+                    MyGroups.Insert(index - 1, group);
+                    SaveStates();
+                }
+            }
+        }
+
+        private void MenuGroupMoveToTop_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
+            {
+                int index = MyGroups.IndexOf(group);
+                int target = MyGroups.Contains(_searchResultGroup) ? 1 : 0;
+
+                if (index > target)
+                {
+                    MyGroups.Remove(group);
+                    MyGroups.Insert(target, group);
+                    SaveStates();
+                }
+            }
+        }
+
+        private void MenuGroupMoveDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
+            {
+                int index = MyGroups.IndexOf(group);
+                if (index < MyGroups.Count - 1)
+                {
+                    MyGroups.Remove(group);
+                    MyGroups.Insert(index + 1, group);
+                    SaveStates();
+                }
+            }
+        }
+
+        private void MenuGroupMoveToBottom_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
+            {
+                int index = MyGroups.IndexOf(group);
+                if (index < MyGroups.Count - 1)
+                {
+                    MyGroups.Remove(group);
+                    MyGroups.Add(group);
+                    SaveStates();
+                }
+            }
+        }
+
+        private ShortcutItem? _draggedItem;
+        private ShortcutGroup? _draggedFromGroup;
+
+        private void Shortcut_DragStarting(UIElement sender, DragStartingEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is ShortcutItem item)
+            {
+                _draggedItem = item;
+                // Find source group
+                _draggedFromGroup = MyGroups.FirstOrDefault(g => g.Shortcuts.Contains(item));
+                
+                e.Data.SetText(item.Id);
+                e.Data.RequestedOperation = DataPackageOperation.Move;
+            }
+        }
+
+        private void Shortcut_DragOver(object sender, DragEventArgs e)
+        {
+            if (_draggedItem != null)
+            {
+                e.AcceptedOperation = DataPackageOperation.Move;
+                e.DragUIOverride.Caption = "Move here";
+            }
+            else
+            {
+                e.AcceptedOperation = DataPackageOperation.None;
+            }
+        }
+
+        private void Shortcut_Drop(object sender, DragEventArgs e)
+        {
+            if (_draggedItem != null && sender is FrameworkElement fe && fe.DataContext is ShortcutItem targetItem)
+            {
+                // Find target group
+                var targetGroup = MyGroups.FirstOrDefault(g => g.Shortcuts.Contains(targetItem));
+                if (targetGroup != null && _draggedFromGroup != null)
+                {
+                    if (targetItem == _draggedItem) return;
+
+                    int targetIndex = targetGroup.Shortcuts.IndexOf(targetItem);
+                    
+                    _draggedFromGroup.Shortcuts.Remove(_draggedItem);
+                    targetGroup.Shortcuts.Insert(targetIndex, _draggedItem);
+
+                    _draggedItem = null;
+                    _draggedFromGroup = null;
+
+                    SaveStates();
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void Expander_DragOver(object sender, DragEventArgs e)
+        {
+            if (_draggedItem != null)
+            {
+                e.AcceptedOperation = DataPackageOperation.Move;
+                e.DragUIOverride.Caption = "Move to group";
+            }
+            else
+            {
+                e.AcceptedOperation = DataPackageOperation.Copy;
+                e.DragUIOverride.Caption = "Add to group";
+            }
+            e.DragUIOverride.IsCaptionVisible = true;
+            e.DragUIOverride.IsContentVisible = true;
+            e.DragUIOverride.IsGlyphVisible = true;
+        }
+
+        private async void Expander_Drop(object sender, DragEventArgs e)
+        {
+            if (_draggedItem != null && sender is Expander expander && expander.DataContext is ShortcutGroup targetGroup)
+            {
+                if (_draggedFromGroup != null && _draggedFromGroup != targetGroup)
+                {
+                    _draggedFromGroup.Shortcuts.Remove(_draggedItem);
+                    targetGroup.Shortcuts.Add(_draggedItem);
+                }
+                _draggedItem = null;
+                _draggedFromGroup = null;
+                SaveStates();
+                UpdateWindowSize();
+                e.Handled = true;
+                return;
+            }
+
+            if (e.DataView.Contains(StandardDataFormats.StorageItems))
+            {
+                var items = await e.DataView.GetStorageItemsAsync();
+                if (sender is Expander expander2 && expander2.DataContext is ShortcutGroup group)
+                {
+                    foreach (var storageItem in items)
+                    {
+                        string targetPath = storageItem.Path;
+                        string arguments = "";
+                        string name = storageItem.Name;
+
+                        if (storageItem is Windows.Storage.StorageFile file)
+                        {
+                            name = file.DisplayName;
+                            if (file.FileType.Equals(".lnk", StringComparison.OrdinalIgnoreCase))
+                            {
+                                try
+                                {
+                                    var resolved = ResolveLnk(targetPath);
+                                    if (!string.IsNullOrEmpty(resolved.target))
+                                    {
+                                        targetPath = resolved.target;
+                                        arguments = resolved.args;
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Error resolving .lnk: {ex.Message}");
+                                }
+                            }
+                        }
+
+                        var newItem = new ShortcutItem
+                        {
+                            Name = name,
+                            Path = targetPath,
+                            Arguments = arguments,
+                            Id = Guid.NewGuid().ToString()
+                        };
+
+                        ExtractAndSaveIcon(newItem, null, false);
+                        group.Shortcuts.Add(newItem);
+                    }
+                    SaveStates();
+                    UpdateWindowSize();
+                }
+            }
+        }
+
+        private (string target, string args) ResolveLnk(string lnkPath)
+        {
+            try
+            {
+                Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
+                if (shellType == null) return (null, null);
+
+                object shell = Activator.CreateInstance(shellType);
+                dynamic shortcut = shellType.InvokeMember("CreateShortcut", System.Reflection.BindingFlags.InvokeMethod, null, shell, new object[] { lnkPath });
+                
+                string target = shortcut.TargetPath;
+                string args = shortcut.Arguments;
+
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(shortcut);
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(shell);
+
+                return (target, args);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ResolveLnk error: {ex.Message}");
+                return (null, null);
+            }
+        }
+
         //private void Exit_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         //{
         //    if (MyTrayIcon != null)
@@ -573,6 +846,33 @@ namespace ShortcutManager
                     }
                 }
             });
+        }
+
+        private void Shortcut_RightTapped(object sender, RightTappedRoutedEventArgs e)
+        {
+            if (sender is Grid grid && grid.DataContext is ShortcutItem item)
+            {
+                SelectShortcut(item, grid);
+            }
+        }
+
+        private void SidebarSearchBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (e.Key == Windows.System.VirtualKey.Escape)
+            {
+                if (!string.IsNullOrEmpty(SidebarSearchBox.Text))
+                {
+                    SidebarSearchBox.Text = string.Empty;
+                    // SidebarSearchBox.Focus(FocusState.Programmatic);
+                }
+                else {
+                    // Close the sidebar or clear text
+                    this.AppWindow.Hide();
+                }
+
+                // Mark as handled so the TextBox doesn't try to process it further
+                e.Handled = true;
+            }
         }
     }
 }

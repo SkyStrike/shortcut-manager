@@ -59,6 +59,14 @@ namespace ShortcutManager
             set { _id = value; OnPropertyChanged(); }
         }
 
+        private bool _isSelected = false;
+        [JsonIgnore]
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set { _isSelected = value; OnPropertyChanged(); }
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
         {

@@ -9,13 +9,13 @@
     xmlns:ui="using:Microsoft.UI.Xaml.Controls"
     xmlns:tb="using:H.NotifyIcon"
     mc:Ignorable="d"
-    Title="TestApp1">
+    Title="Shortcut Manager">
 
     <Window.SystemBackdrop>
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid Background="Transparent">
+    <Grid Background="Transparent" PointerPressed="RootGrid_PointerPressed" ToolTipService.ToolTip="">
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="OnEscPressed"/>
         </Grid.KeyboardAccelerators>
@@ -25,6 +25,8 @@
         </Grid.RowDefinitions>
         <Grid.Resources>
             <XamlUICommand x:Key="ToggleSidebarCommand" ExecuteRequested="ToggleSidebarCommand_ExecuteRequested" />
+            <local:SelectionToBrushConverter x:Key="SelectionBrushConverter"/>
+            <local:SelectionToBorderBrushConverter x:Key="SelectionBorderBrushConverter"/>
         </Grid.Resources>
 
         <tb:TaskbarIcon
@@ -43,6 +45,7 @@
                     Margin="10"
                     TextChanged="SearchBox_TextChanged"
                     QuerySubmitted="SidebarSearchBox_QuerySubmitted"
+                        PreviewKeyDown="SidebarSearchBox_PreviewKeyDown"
                     Background="{ThemeResource SystemControlAcrylicElementBrush}"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="Transparent">
@@ -53,9 +56,38 @@
                           IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
                           Expanding="Expander_Expanding"
                           Collapsed="Expander_Collapsed"
+                          AllowDrop="True"
+                          DragOver="Expander_DragOver"
+                          Drop="Expander_Drop"
                           HorizontalAlignment="Stretch" 
                           Margin="5,2"
-                          Background="{ThemeResource SystemControlAcrylicElementBrush}">
+                          Background="{ThemeResource SystemControlAcrylicElementBrush}"
+                          ToolTipService.ToolTip="">
+
+                            <Expander.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Move Up" Click="MenuGroupMoveUp_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE70E;" FontFamily="Segoe Fluent Icons" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem Text="Move to Top" Click="MenuGroupMoveToTop_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE898;" FontFamily="Segoe Fluent Icons" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem Text="Move Down" Click="MenuGroupMoveDown_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE70D;" FontFamily="Segoe Fluent Icons" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem Text="Move to Bottom" Click="MenuGroupMoveToBottom_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE896;" FontFamily="Segoe Fluent Icons" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </Expander.ContextFlyout>
 
                             <ItemsRepeater ItemsSource="{Binding Shortcuts}">
                                 <ItemsRepeater.Layout>
@@ -67,64 +99,78 @@
 
                                 <ItemsRepeater.ItemTemplate>
                                     <DataTemplate>
-                                        <Button Click="OnShortcutClick" 
-                    Padding="5"
+                                        <Grid DoubleTapped="OnShortcutDoubleTapped" 
+                    Tapped="Shortcut_Tapped"
+                    ContextRequested="Shortcut_ContextRequested"
+                                              RightTapped="Shortcut_RightTapped"
+                    Padding="0"
                     Background="Transparent"
-                    BorderBrush="Transparent"
                     VerticalAlignment="Top"
+                    CanDrag="True"
+                    DragStarting="Shortcut_DragStarting"
+                    AllowDrop="True"
+                    DragOver="Shortcut_DragOver"
+                    Drop="Shortcut_Drop"
                     ToolTipService.ToolTip="{Binding Path}">
 
-                                            <Button.ContextFlyout>
+                                            <Grid.ContextFlyout>
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="Open" Click="MenuOpen_Click">
                                                         <MenuFlyoutItem.Icon>
-                                                            <SymbolIcon Symbol="Play" />
+                                                            <FontIcon Glyph="&#xE768;" FontFamily="Segoe Fluent Icons" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     <MenuFlyoutItem Text="Open in directory" Click="MenuOpenDir_Click">
                                                         <MenuFlyoutItem.Icon>
-                                                            <SymbolIcon Symbol="Folder" />
+                                                            <FontIcon Glyph="&#xED25;" FontFamily="Segoe Fluent Icons" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     <MenuFlyoutItem Text="Re-generate Icon" Click="MenuRegenerateIcon_Click">
                                                         <MenuFlyoutItem.Icon>
-                                                            <SymbolIcon Symbol="Refresh" />
+                                                            <FontIcon Glyph="&#xE72C;" FontFamily="Segoe Fluent Icons" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     <MenuFlyoutItem Text="Change Icon" Click="MenuChangeIcon_Click">
                                                         <MenuFlyoutItem.Icon>
-                                                            <SymbolIcon Symbol="Edit" />
+                                                            <FontIcon Glyph="&#xE70F;" FontFamily="Segoe Fluent Icons" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     <MenuFlyoutItem Text="Properties" Click="MenuProperties_Click">
                                                         <MenuFlyoutItem.Icon>
-                                                            <SymbolIcon Symbol="Setting" />
+                                                            <FontIcon Glyph="&#xE713;" FontFamily="Segoe Fluent Icons" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                     <MenuFlyoutSeparator />
                                                     <MenuFlyoutItem Text="Remove" Click="MenuRemove_Click" Foreground="Red">
                                                         <MenuFlyoutItem.Icon>
-                                                            <SymbolIcon Symbol="Delete" Foreground="Red" />
+                                                            <FontIcon Glyph="&#xE74D;" FontFamily="Segoe Fluent Icons" Foreground="Red" />
                                                         </MenuFlyoutItem.Icon>
                                                     </MenuFlyoutItem>
                                                 </MenuFlyout>
-                                            </Button.ContextFlyout>
+                                            </Grid.ContextFlyout>
 
-                                            <StackPanel Width="100" Spacing="5">
-                                                <Image Source="{Binding Icon}" 
-                           Width="32" 
-                           Height="32" 
-                           HorizontalAlignment="Center"
-                           Stretch="Uniform"/>
+                                            <Border x:Name="SelectionBorder" 
+                                                    CornerRadius="4" 
+                                                    Margin="2"
+                                                    Background="{Binding IsSelected, Converter={StaticResource SelectionBrushConverter}, Mode=OneWay}"
+                                                    BorderBrush="{Binding IsSelected, Converter={StaticResource SelectionBorderBrushConverter}, Mode=OneWay}"
+                                                    BorderThickness="1">
+                                                <StackPanel Width="100" Spacing="5" Margin="5">
+                                                    <Image Source="{Binding Icon}" 
+                                                           Width="32" 
+                                                           Height="32" 
+                                                           HorizontalAlignment="Center"
+                                                           Stretch="Uniform"/>
 
-                                                <TextBlock Text="{Binding Name}" 
-                               FontSize="11" 
-                               HorizontalAlignment="Center" 
-                               TextAlignment="Center" 
-                               TextWrapping="Wrap" 
-                               TextTrimming="None"/>
-                                            </StackPanel>
-                                        </Button>
+                                                    <TextBlock Text="{Binding Name}" 
+                                                               FontSize="11" 
+                                                               HorizontalAlignment="Center" 
+                                                               TextAlignment="Center" 
+                                                               TextWrapping="Wrap" 
+                                                               TextTrimming="None"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
                                     </DataTemplate>
                                 </ItemsRepeater.ItemTemplate>
                             </ItemsRepeater>
