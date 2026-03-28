@@ -25,6 +25,7 @@
 	  
 	<AppxPackage>false</AppxPackage>
 	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	<BuiltInComSupport>true</BuiltInComSupport>
   </PropertyGroup>
 
   <ItemGroup>
@@ -60,15 +61,17 @@
     <None Update="serilog.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="star.ico">
+    <None Update="Assets\star.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-	  <Content Include="icons\**">
+    <Content Include="icons\**">
 		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </Content>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Assets\" />
+    <Content Update="Assets\star.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!--
@@ -85,6 +88,6 @@
     <PublishReadyToRun Condition="'$(Configuration)' == 'Debug'">False</PublishReadyToRun>
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
-    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">False</PublishTrimmed>
   </PropertyGroup>
 </Project>

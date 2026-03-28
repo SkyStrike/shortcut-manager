@@ -54,7 +54,7 @@
         <tb:TaskbarIcon
             x:Name="MyTrayIcon"
             ToolTipText="Shortcut Manager"
-            IconSource="star.ico"
+            IconSource="Assets/star.ico"
             LeftClickCommand="{StaticResource ToggleVisibilityCommand}"
             NoLeftClickDelay="True"
             >

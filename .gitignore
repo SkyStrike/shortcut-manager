@@ -28,6 +28,7 @@ project.assets.json
 *.swp
 *.bak
 *.ico
+!Assets/*.ico
 .local
 .env
 
