@@ -25,7 +25,7 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
 using Windows.UI.Popups;
-using WinRT.Interop;
+using WinRT.Interop; 
 
 namespace ShortcutManager
 {
