@@ -581,6 +581,35 @@ namespace ShortcutManager
             UpdateWindowSize();
         }
 
+        private async void MenuGroupLaunchAll_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
+            {
+                if (group.Shortcuts.Count == 0) return;
+
+                if (group.Shortcuts.Count > 5)
+                {
+                    ContentDialog confirmDialog = new ContentDialog
+                    {
+                        Title = "Launch All",
+                        Content = $"Are you sure you want to launch all {group.Shortcuts.Count} shortcuts in '{group.GroupName}'?",
+                        PrimaryButtonText = "Launch",
+                        CloseButtonText = "Cancel",
+                        DefaultButton = ContentDialogButton.Close,
+                        XamlRoot = this.Content.XamlRoot
+                    };
+
+                    var result = await confirmDialog.ShowAsync();
+                    if (result != ContentDialogResult.Primary) return;
+                }
+
+                foreach (var item in group.Shortcuts)
+                {
+                    ExecuteShortcut(item);
+                }
+            }
+        }
+
         private void MenuGroupMoveUp_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
@@ -898,6 +927,7 @@ namespace ShortcutManager
         }
 
         private void ClearOrHideApp() {
+            ClearSelection();
             if (!string.IsNullOrEmpty(SidebarSearchBox.Text))
             {
                 SidebarSearchBox.Text = string.Empty;
@@ -910,15 +940,10 @@ namespace ShortcutManager
             }
         }
 
-        private void SearchBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        private void OnEscPressed(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
         {
-            if (e.Key == Windows.System.VirtualKey.Escape)
-            {
-                ClearOrHideApp();
-
-                // Mark as handled so the TextBox doesn't try to process it further
-                e.Handled = true;
-            }
+            ClearOrHideApp();
+            args.Handled = true;
         }
 
         private void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
@@ -926,7 +951,61 @@ namespace ShortcutManager
             if (e.Key == Windows.System.VirtualKey.Escape)
             {
                 ClearOrHideApp();
-                e.Handled = true; // Prevents the 'Esc' from doing anything else
+                e.Handled = true; 
+                return;
+            }
+
+            // F1 - F5: Toggle Groups
+            if (e.Key >= Windows.System.VirtualKey.F1 && e.Key <= Windows.System.VirtualKey.F5)
+            {
+                int index = (int)e.Key - (int)Windows.System.VirtualKey.F1;
+                
+                // Skip search results if present
+                int offset = MyGroups.Contains(_searchResultGroup) ? 1 : 0;
+                int actualIndex = index + offset;
+
+                if (actualIndex < MyGroups.Count)
+                {
+                    var group = MyGroups[actualIndex];
+                    group.IsExpanded = !group.IsExpanded;
+                    e.Handled = true;
+                }
+                return;
+            }
+
+            // Alt + 1-5: Launch Shortcuts
+            var altState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
+            bool isAltPressed = altState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+            if (isAltPressed && e.Key >= Windows.System.VirtualKey.Number1 && e.Key <= Windows.System.VirtualKey.Number5)
+            {
+                int index = (int)e.Key - (int)Windows.System.VirtualKey.Number1;
+                ShortcutItem? itemToLaunch = null;
+
+                // Priority 1: Search results
+                if (MyGroups.Contains(_searchResultGroup))
+                {
+                    if (index < _searchResultGroup.Shortcuts.Count)
+                    {
+                        itemToLaunch = _searchResultGroup.Shortcuts[index];
+                    }
+                }
+                else
+                {
+                    // Priority 2: Currently expanded group
+                    var expandedGroup = MyGroups.FirstOrDefault(g => g.IsExpanded);
+                    if (expandedGroup != null && index < expandedGroup.Shortcuts.Count)
+                    {
+                        itemToLaunch = expandedGroup.Shortcuts[index];
+                    }
+                }
+
+                if (itemToLaunch != null)
+                {
+                    ExecuteShortcut(itemToLaunch);
+                    e.Handled = true;
+                }
+                return;
             }
         }
     }

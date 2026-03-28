@@ -26,11 +26,6 @@
             </MenuFlyout>
         </Grid.ContextFlyout>
         
-        <Grid.KeyboardAccelerators>
-            <!-- There is a display bug that keeps showing Esc in the display regardless of how I tried to set it blank. -->
-            <!--<KeyboardAccelerator Key="Escape" Invoked="OnEscPressed" ToolTipService.ToolTip="" ToolTipService.Placement="Bottom" />-->
-        </Grid.KeyboardAccelerators>
-        
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -60,7 +55,6 @@
                     Margin="10"
                     TextChanged="SearchBox_TextChanged"
                     QuerySubmitted="SearchBox_QuerySubmitted"
-                        PreviewKeyDown="SearchBox_PreviewKeyDown"
                     Background="{ThemeResource SystemControlAcrylicElementBrush}"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="Transparent">
@@ -81,6 +75,12 @@
 
                             <Expander.ContextFlyout>
                                 <MenuFlyout>
+                                    <MenuFlyoutItem Text="Launch All" Click="MenuGroupLaunchAll_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE8E5;" FontFamily="Segoe Fluent Icons" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutSeparator />
                                     <MenuFlyoutItem Text="Move Up" Click="MenuGroupMoveUp_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Glyph="&#xE70E;" FontFamily="Segoe Fluent Icons" />
