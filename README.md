@@ -81,6 +81,9 @@ Access by right-clicking the application background:
 This project is licensed under the MIT License.
 
 # Backlog Features
-- Keyboard navigation for shortcut items (Arrow keys)
-- Support for custom group icons
+- Keyboard [Del] to Delete shortcut items.
+- On lose focus, hide application.
 - Support for URL-based shortcuts
+
+# Quirky things
+- will update here...

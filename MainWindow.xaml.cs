@@ -24,8 +24,9 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
-using Windows.UI.Popups;
-using WinRT.Interop; 
+using Windows.Storage.Pickers;
+using WinRT.Interop;
+using System.Runtime.InteropServices;
 
 namespace ShortcutManager
 {
@@ -34,6 +35,29 @@ namespace ShortcutManager
     /// </summary>
     public sealed partial class MainWindow : Window
     {
+        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct SHFILEINFO
+        {
+            public IntPtr hIcon;
+            public int iIcon;
+            public uint dwAttributes;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+            public string szDisplayName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
+            public string szTypeName;
+        }
+
+        private const uint SHGFI_ICON = 0x100;
+        private const uint SHGFI_LARGEICON = 0x0;
+        private const uint SHGFI_SMALLICON = 0x1;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool DestroyIcon(IntPtr hIcon);
+
         // Main data collection for the UI
         public ObservableCollection<ShortcutGroup> MyGroups { get; set; } = new();
         
@@ -537,11 +561,11 @@ namespace ShortcutManager
 
             if (extension == "exe")
             {
-                fileName = Path.GetFileNameWithoutExtension(filePath).ToLower() + ".ico";
+                fileName = Path.GetFileNameWithoutExtension(filePath).ToLower() + ".png";
             }
             else
             {
-                fileName = $"ext_{extension}.ico";
+                fileName = $"ext_{extension}.png";
             }
 
             // Sanitize filename
@@ -550,7 +574,7 @@ namespace ShortcutManager
         }
 
         /// <summary>
-        /// Extracts an icon from a file and saves it to the centralized cache.
+        /// Extracts a high-quality icon from a file and saves it to the centralized cache as a PNG.
         /// </summary>
         private bool ExtractAndSaveIcon(ShortcutItem item, string sourcePath = null, bool force = false)
         {
@@ -576,19 +600,45 @@ namespace ShortcutManager
                     Directory.CreateDirectory(iconsDir);
                 }
 
-                if (Path.GetExtension(effectiveSource).ToLower() == ".ico")
+                if (Path.GetExtension(effectiveSource).ToLower() == ".ico" && sourcePath != null)
                 {
-                    File.Copy(effectiveSource, iconPath, true);
+                    // If manually selecting an .ico, we still convert to PNG for consistency and quality
+                    using (var icon = new Icon(effectiveSource))
+                    {
+                        using (var bitmap = icon.ToBitmap())
+                        {
+                            bitmap.Save(iconPath, ImageFormat.Png);
+                        }
+                    }
                 }
                 else
                 {
-                    using (var icon = Icon.ExtractAssociatedIcon(effectiveSource))
+                    // Use Win32 SHGetFileInfo for high-quality extraction (32-bit with Alpha)
+                    SHFILEINFO shinfo = new SHFILEINFO();
+                    IntPtr hImgLarge = SHGetFileInfo(effectiveSource, 0, ref shinfo, (uint)Marshal.SizeOf(shinfo), SHGFI_ICON | SHGFI_LARGEICON);
+                    
+                    if (shinfo.hIcon != IntPtr.Zero)
                     {
-                        if (icon != null)
+                        using (var icon = Icon.FromHandle(shinfo.hIcon))
                         {
-                            using (var fs = new FileStream(iconPath, FileMode.Create))
+                            using (var bitmap = icon.ToBitmap())
                             {
-                                icon.Save(fs);
+                                bitmap.Save(iconPath, ImageFormat.Png);
+                            }
+                        }
+                        DestroyIcon(shinfo.hIcon);
+                    }
+                    else
+                    {
+                        // Fallback to legacy method if SHGetFileInfo fails
+                        using (var icon = Icon.ExtractAssociatedIcon(effectiveSource))
+                        {
+                            if (icon != null)
+                            {
+                                using (var bitmap = icon.ToBitmap())
+                                {
+                                    bitmap.Save(iconPath, ImageFormat.Png);
+                                }
                             }
                         }
                     }
@@ -601,7 +651,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Error extracting icon: {ex.Message}");
+                Log.Error(ex, "Error extracting icon for {Path}", item.Path);
             }
             return false;
         }
