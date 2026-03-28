@@ -334,7 +334,7 @@ namespace ShortcutManager
             }
         }
 
-        private void SelectShortcut(ShortcutItem item, Grid grid)
+        private void SelectShortcut(ShortcutItem item, Grid? grid)
         {
             if (_selectedItem != null && _selectedItem != item)
             {
@@ -343,7 +343,158 @@ namespace ShortcutManager
 
             _selectedItem = item;
             _selectedItem.IsSelected = true;
-            grid.Focus(FocusState.Pointer);
+            
+            // If grid is provided (from click), focus it. 
+            grid?.Focus(FocusState.Pointer);
+        }
+
+        /// <summary>
+        /// Logic for keyboard navigation using arrow keys.
+        /// </summary>
+        private void NavigateShortcuts(Windows.System.VirtualKey key)
+        {
+            if (!MyGroups.Any()) return;
+
+            // Find current group and item index
+            int currentGroupIdx = -1;
+            int currentItemIdx = -1;
+
+            if (_selectedItem != null)
+            {
+                for (int i = 0; i < MyGroups.Count; i++)
+                {
+                    int itemIdx = MyGroups[i].Shortcuts.IndexOf(_selectedItem);
+                    if (itemIdx != -1)
+                    {
+                        currentGroupIdx = i;
+                        currentItemIdx = itemIdx;
+                        break;
+                    }
+                }
+            }
+
+            // If nothing selected, start at the first expanded group or first group
+            if (currentGroupIdx == -1)
+            {
+                var targetGroup = MyGroups.FirstOrDefault(g => g.IsExpanded) ?? MyGroups[0];
+                currentGroupIdx = MyGroups.IndexOf(targetGroup);
+                if (targetGroup.Shortcuts.Any())
+                {
+                    SelectShortcut(targetGroup.Shortcuts[0], null);
+                }
+                return;
+            }
+
+            var currentGroup = MyGroups[currentGroupIdx];
+            int itemsPerRow = CalculateItemsPerRow();
+            int newGroupIdx = currentGroupIdx;
+            int newItemIdx = currentItemIdx;
+
+            switch (key)
+            {
+                case Windows.System.VirtualKey.Left:
+                    newItemIdx--;
+                    break;
+                case Windows.System.VirtualKey.Right:
+                    newItemIdx++;
+                    break;
+                case Windows.System.VirtualKey.Up:
+                    newItemIdx -= itemsPerRow;
+                    break;
+                case Windows.System.VirtualKey.Down:
+                    newItemIdx += itemsPerRow;
+                    break;
+            }
+
+            // Handle wrap-around or group transition
+            if (newItemIdx < 0)
+            {
+                // Move to previous group
+                do { newGroupIdx--; } while (newGroupIdx >= 0 && MyGroups[newGroupIdx].Shortcuts.Count == 0);
+                
+                if (newGroupIdx >= 0)
+                {
+                    var prevGroup = MyGroups[newGroupIdx];
+                    prevGroup.IsExpanded = true;
+                    // If moving Up, try to stay in the same "column" in the last row
+                    if (key == Windows.System.VirtualKey.Up)
+                    {
+                        int lastRowStart = (prevGroup.Shortcuts.Count - 1) / itemsPerRow * itemsPerRow;
+                        newItemIdx = Math.Min(prevGroup.Shortcuts.Count - 1, lastRowStart + currentItemIdx % itemsPerRow);
+                    }
+                    else
+                    {
+                        newItemIdx = prevGroup.Shortcuts.Count - 1;
+                    }
+                }
+                else
+                {
+                    newGroupIdx = currentGroupIdx;
+                    newItemIdx = 0;
+                }
+            }
+            else if (newItemIdx >= currentGroup.Shortcuts.Count)
+            {
+                // Move to next group
+                do { newGroupIdx++; } while (newGroupIdx < MyGroups.Count && MyGroups[newGroupIdx].Shortcuts.Count == 0);
+
+                if (newGroupIdx < MyGroups.Count)
+                {
+                    var nextGroup = MyGroups[newGroupIdx];
+                    nextGroup.IsExpanded = true;
+                    // If moving Down, try to stay in the same "column" in the first row
+                    if (key == Windows.System.VirtualKey.Down)
+                    {
+                        newItemIdx = Math.Min(nextGroup.Shortcuts.Count - 1, currentItemIdx % itemsPerRow);
+                    }
+                    else
+                    {
+                        newItemIdx = 0;
+                    }
+                }
+                else
+                {
+                    newGroupIdx = currentGroupIdx;
+                    newItemIdx = currentGroup.Shortcuts.Count - 1;
+                }
+            }
+
+            // Apply new selection
+            if (newGroupIdx >= 0 && newGroupIdx < MyGroups.Count)
+            {
+                var targetGroup = MyGroups[newGroupIdx];
+                if (newItemIdx >= 0 && newItemIdx < targetGroup.Shortcuts.Count)
+                {
+                    SelectShortcut(targetGroup.Shortcuts[newItemIdx], null);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Accurately calculates the number of items per row by inspecting the actual layout.
+        /// </summary>
+        private int CalculateItemsPerRow()
+        {
+            try
+            {
+                if (this.Content is Grid rootGrid)
+                {
+                    var scrollViewer = rootGrid.Children.OfType<ScrollViewer>().FirstOrDefault();
+                    if (scrollViewer != null && scrollViewer.ViewportWidth > 0)
+                    {
+                        // The items are arranged in a UniformGridLayout inside an Expander.
+                        // MinItemWidth="110" + MinColumnSpacing="5" = 115px per item slot.
+                        // Expander content usually has some internal padding (approx 16-20px each side).
+                        double availableWidth = scrollViewer.ViewportWidth - 40; 
+                        int count = (int)(availableWidth / 115);
+                        return Math.Max(1, count);
+                    }
+                }
+            }
+            catch { }
+
+            // Default fallback for 1600 width
+            return 13; 
         }
 
         private async void OnShortcutDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -697,6 +848,14 @@ namespace ShortcutManager
                             }
                         }
                         _isUpdatingStates = false;
+
+                        // Auto-highlight the first result
+                        ClearSelection();
+                        if (_searchResultGroup.Shortcuts.Any())
+                        {
+                            _selectedItem = _searchResultGroup.Shortcuts[0];
+                            _selectedItem.IsSelected = true;
+                        }
 
                         // Auto-highlight the first result
                         ClearSelection();
@@ -1331,6 +1490,24 @@ namespace ShortcutManager
                     e.Handled = true;
                     return;
                 }
+            }
+
+            // Navigation: Arrow Keys
+            if (e.Key == Windows.System.VirtualKey.Left || e.Key == Windows.System.VirtualKey.Right ||
+                e.Key == Windows.System.VirtualKey.Up || e.Key == Windows.System.VirtualKey.Down)
+            {
+                NavigateShortcuts(e.Key);
+                e.Handled = true;
+                return;
+            }
+
+            // F1 - F5: Toggle Expansion of Custom Groups
+            if (e.Key == Windows.System.VirtualKey.Left || e.Key == Windows.System.VirtualKey.Right ||
+                e.Key == Windows.System.VirtualKey.Up || e.Key == Windows.System.VirtualKey.Down)
+            {
+                NavigateShortcuts(e.Key);
+                e.Handled = true;
+                return;
             }
 
             // F1 - F5: Toggle Expansion of Custom Groups

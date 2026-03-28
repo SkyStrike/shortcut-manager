@@ -132,7 +132,7 @@
                                 </MenuFlyout>
                             </Expander.ContextFlyout>
 
-                            <ItemsRepeater ItemsSource="{Binding Shortcuts}">
+                            <ItemsRepeater x:Name="ShortcutsRepeater" ItemsSource="{Binding Shortcuts}">
                                 <ItemsRepeater.Layout>
                                     <UniformGridLayout Orientation="Horizontal" 
                                                        MinItemWidth="110" 
