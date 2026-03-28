@@ -1,0 +1,60 @@
+name: Build and Release WinUI 3
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers when you push v1.0, v1.1.0, etc.
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Required for GitVersion to see your history
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x' # Match your project version (8.0 or 9.0)
+
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v1.1.1
+      with:
+        versionSpec: '5.x'
+
+    - name: Determine Version
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v1.1.1
+
+    - name: Restore Dependencies
+      run: dotnet restore
+
+    - name: Publish Unpackaged App
+      # This creates a single-file EXE that is self-contained (includes runtimes)
+      run: >
+        dotnet publish -c Release 
+        -r win-x64 
+        --self-contained true 
+        -p:PublishSingleFile=true 
+        -p:Version=${{ steps.gitversion.outputs.AssemblySemVer }} 
+        -p:InformationalVersion=${{ steps.gitversion.outputs.InformationalVersion }}
+        -o ./publish
+
+    - name: Zip the Output
+      shell: pwsh
+      run: Compress-Archive -Path ./publish/* -DestinationPath ./ShortcutManager_v${{ steps.gitversion.outputs.MajorMinorPatch }}.zip
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ steps.gitversion.outputs.FullSemVer }}
+        draft: false
+        prerelease: false
+        files: |
+          *.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
