@@ -35,10 +35,12 @@ jobs:
     - name: Publish Unpackaged App
       # This creates a single-file EXE that is self-contained (includes runtimes)
       run: >
-        dotnet publish -c Release 
+        dotnet publish ShortcutManager.csproj
+        -c Release 
         -r win-x64 
         --self-contained true 
         -p:PublishSingleFile=true 
+        -p:PlatformTarget=x64
         -p:Version=${{ steps.gitversion.outputs.AssemblySemVer }} 
         -p:InformationalVersion=${{ steps.gitversion.outputs.InformationalVersion }}
         -o ./publish
