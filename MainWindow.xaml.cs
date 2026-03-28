@@ -58,6 +58,23 @@ namespace ShortcutManager
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool DestroyIcon(IntPtr hIcon);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool IsIconic(IntPtr hWnd);
+
+        private const int SW_RESTORE = 9;
+        private const int SW_SHOW = 5;
+
         // Main data collection for the UI
         public ObservableCollection<ShortcutGroup> MyGroups { get; set; } = new();
         
@@ -1414,17 +1431,41 @@ namespace ShortcutManager
         {
             this.DispatcherQueue.TryEnqueue(() =>
             {
+                IntPtr hWnd = WindowNative.GetWindowHandle(this);
                 if (this.AppWindow.IsVisible)
                 {
-                    this.AppWindow.Hide();
+                    IntPtr foregroundHWnd = GetForegroundWindow();
+                    bool isMinimized = IsIconic(hWnd);
+
+                    if (foregroundHWnd != hWnd || isMinimized)
+                    {
+                        // Window is visible but either minimized or behind other windows
+                        if (isMinimized)
+                        {
+                            ShowWindow(hWnd, SW_RESTORE);
+                        }
+                        else
+                        {
+                            ShowWindow(hWnd, SW_SHOW);
+                        }
+                        SetForegroundWindow(hWnd);
+                        this.Activate();
+                    }
+                    else
+                    {
+                        // Window is already in front - hide it
+                        this.AppWindow.Hide();
+                    }
                 }
                 else
                 {
+                    // Window is hidden - show and focus
                     this.AppWindow.Show();
                     this.Activate();
+                    SetForegroundWindow(hWnd);
+                    
                     this.AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
-
-                    if (this.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+                    if (this.AppWindow.Presenter is OverlappedPresenter presenter)
                     {
                         presenter.SetBorderAndTitleBar(false, false);
                     }
