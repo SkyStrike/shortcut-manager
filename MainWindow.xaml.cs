@@ -685,6 +685,13 @@ namespace ShortcutManager
             }
         }
 
+        private async void MenuSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new SettingsDialog();
+            dialog.XamlRoot = this.Content.XamlRoot;
+            await dialog.ShowAsync();
+        }
+
         private async void MenuGroupRename_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
