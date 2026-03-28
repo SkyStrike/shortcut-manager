@@ -15,7 +15,7 @@
         <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
-    <Grid Background="Transparent" PointerPressed="RootGrid_PointerPressed" ToolTipService.ToolTip="">
+    <Grid Background="Transparent" PointerPressed="RootGrid_PointerPressed" ToolTipService.ToolTip="" PreviewKeyDown="RootGrid_PreviewKeyDown">
         <Grid.ContextFlyout>
             <MenuFlyout>
                 <MenuFlyoutItem Text="New Group" Click="MenuNewGroup_Click">
@@ -25,24 +25,30 @@
                 </MenuFlyoutItem>
             </MenuFlyout>
         </Grid.ContextFlyout>
+        
         <Grid.KeyboardAccelerators>
-            <KeyboardAccelerator Key="Escape" Invoked="OnEscPressed"/>
+            <!-- There is a display bug that keeps showing Esc in the display regardless of how I tried to set it blank. -->
+            <!--<KeyboardAccelerator Key="Escape" Invoked="OnEscPressed" ToolTipService.ToolTip="" ToolTipService.Placement="Bottom" />-->
         </Grid.KeyboardAccelerators>
+        
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.Resources>
-            <XamlUICommand x:Key="ToggleSidebarCommand" ExecuteRequested="ToggleSidebarCommand_ExecuteRequested" />
+            <XamlUICommand x:Key="ToggleVisibilityCommand" ExecuteRequested="ToggleVisibilityCommand_ExecuteRequested" />
             <local:SelectionToBrushConverter x:Key="SelectionBrushConverter"/>
             <local:SelectionToBorderBrushConverter x:Key="SelectionBorderBrushConverter"/>
+            <Style TargetType="ToolTip">
+                <Setter Property="Visibility" Value="Collapsed" />
+            </Style>
         </Grid.Resources>
 
         <tb:TaskbarIcon
             x:Name="MyTrayIcon"
             ToolTipText="Shortcut Manager"
             IconSource="star.ico"
-            LeftClickCommand="{StaticResource ToggleSidebarCommand}"
+            LeftClickCommand="{StaticResource ToggleVisibilityCommand}"
             NoLeftClickDelay="True"
             >
         </tb:TaskbarIcon>
@@ -53,8 +59,8 @@
                     QueryIcon="Find"
                     Margin="10"
                     TextChanged="SearchBox_TextChanged"
-                    QuerySubmitted="SidebarSearchBox_QuerySubmitted"
-                        PreviewKeyDown="SidebarSearchBox_PreviewKeyDown"
+                    QuerySubmitted="SearchBox_QuerySubmitted"
+                        PreviewKeyDown="SearchBox_PreviewKeyDown"
                     Background="{ThemeResource SystemControlAcrylicElementBrush}"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="Transparent">

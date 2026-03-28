@@ -116,15 +116,6 @@ namespace ShortcutManager
             }
         }
 
-        private void OnEscPressed(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
-        {
-            if (_appWindow != null)
-            {
-                _appWindow.Hide();
-            }
-            args.Handled = true;
-        }
-
         private void LoadShortcuts()
         {
             try
@@ -546,7 +537,7 @@ namespace ShortcutManager
             }
         }
 
-        private void SidebarSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+        private void SearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
         {
             var firstMatch = _searchResultGroup.Shortcuts.FirstOrDefault();
             if (firstMatch == null)
@@ -870,16 +861,8 @@ namespace ShortcutManager
             }
         }
 
-        //private void Exit_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-        //{
-        //    if (MyTrayIcon != null)
-        //    {
-        //        MyTrayIcon.Dispose();
-        //    }
-        //    Microsoft.UI.Xaml.Application.Current.Exit();
-        //}
 
-        private void ToggleSidebarCommand_ExecuteRequested(XamlUICommand sender, ExecuteRequestedEventArgs args)
+        private void ToggleVisibilityCommand_ExecuteRequested(XamlUICommand sender, ExecuteRequestedEventArgs args)
         {
             // Ensure we are on the UI Thread
             this.DispatcherQueue.TryEnqueue(() =>
@@ -914,22 +897,36 @@ namespace ShortcutManager
             }
         }
 
-        private void SidebarSearchBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        private void ClearOrHideApp() {
+            if (!string.IsNullOrEmpty(SidebarSearchBox.Text))
+            {
+                SidebarSearchBox.Text = string.Empty;
+                SidebarSearchBox.Focus(FocusState.Programmatic);
+            }
+            else
+            {
+                // Close the sidebar or clear text
+                this.AppWindow.Hide();
+            }
+        }
+
+        private void SearchBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
         {
             if (e.Key == Windows.System.VirtualKey.Escape)
             {
-                if (!string.IsNullOrEmpty(SidebarSearchBox.Text))
-                {
-                    SidebarSearchBox.Text = string.Empty;
-                    // SidebarSearchBox.Focus(FocusState.Programmatic);
-                }
-                else {
-                    // Close the sidebar or clear text
-                    this.AppWindow.Hide();
-                }
+                ClearOrHideApp();
 
                 // Mark as handled so the TextBox doesn't try to process it further
                 e.Handled = true;
+            }
+        }
+
+        private void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        {
+            if (e.Key == Windows.System.VirtualKey.Escape)
+            {
+                ClearOrHideApp();
+                e.Handled = true; // Prevents the 'Esc' from doing anything else
             }
         }
     }

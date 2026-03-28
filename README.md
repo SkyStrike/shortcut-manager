@@ -12,27 +12,40 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 
 ## Features
 
-- **📂 Grouped Shortcuts:** Organize your shortcuts into logical categories using expanders.
+- **📂 Group Management:** Create, rename, delete, and rearrange groups using an intuitive context menu.
+- **🖱️ Drag & Drop:**
+  - Drag files, folders, or Windows shortcuts (`.lnk`) directly onto a group to add them.
+  - Rearrange shortcuts within a group or move them between groups by dragging icons.
+  - Automatic resolution of `.lnk` targets and command-line arguments.
+- **🖼️ Smart Icon Cache:** 
+  - Centralized icon extraction and caching based on file extensions or executable names.
+  - Portable configuration using relative paths for cached icons.
+  - Manually change icons by selecting `.ico` files or extracting from other executables.
 - **🔍 Fast Search:** Quickly find any shortcut with a built-in search box. Press `Enter` to launch the first match.
-- **🎨 Modern UI:** A clean, borderless design using **Desktop Acrylic** backdrop for a translucent glass effect.
+- **🎨 Modern Fluent UI:** 
+  - Clean, borderless design using **Desktop Acrylic** backdrop.
+  - **Windows 11 Fluent Icons** (Segoe Fluent Icons) throughout the interface.
+  - Visual feedback with hover and selection highlights.
 - **📥 System Tray Integration:** Stays out of your way in the system tray. Click the tray icon to toggle visibility.
-- **🛠️ Flexible Configuration:** All shortcuts are managed via a simple `shortcuts.json` file.
 - **⚡ Admin Support:** Option to launch specific applications with administrative privileges.
 - **📏 Dynamic Sizing:** The window automatically adjusts its height based on the number of shortcuts and expanded groups.
-- **🎹 Keyboard Friendly:** 
+- **🎹 Keyboard & Mouse Friendly:** 
+  - `Double-Click`: Launch a shortcut.
   - `Esc`: Clear search or hide the window.
   - `Enter`: Launch the top search result.
+  - `Right-Click`: Access comprehensive context menus for shortcuts, groups, and the application.
 
 ## Tech Stack
 
 - **Framework:** .NET 10 + WinUI 3 (Windows App SDK)
 - **UI Components:** Microsoft UI Xaml
+- **Icons:** Segoe Fluent Icons
 - **Tray Icon:** [H.NotifyIcon.WinUI](https://github.com/HavenDV/H.NotifyIcon)
 - **Serialization:** System.Text.Json
 
 ## Configuration
 
-The application loads shortcuts from `shortcuts.json`. You can find this file in the root directory or in a `tmp/` subfolder.
+The application loads shortcuts from `shortcuts.json`.
 
 ### JSON Structure
 
@@ -47,7 +60,8 @@ The application loads shortcuts from `shortcuts.json`. You can find this file in
         "application": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
         "icon": "icons/chrome.ico",
         "args": "--incognito",
-        "runasAdmin": false
+        "runasAdmin": false,
+        "id": "guid-here"
       }
     ]
   }
@@ -59,13 +73,10 @@ The application loads shortcuts from `shortcuts.json`. You can find this file in
 - `Shortcuts`:
     - `text`: Display name of the shortcut.
     - `application`: Full path to the executable or file.
-    - `icon`: Path to the `.ico` or image file (relative to the app or absolute).
+    - `icon`: Relative path to the cached icon file.
     - `args`: Command-line arguments.
     - `runasAdmin`: Set to `true` to prompt for UAC on launch.
-
-## Icons
-
-For copyright related reaons, no default icons will be provided.
+    - `id`: Unique identifier for management and dragging.
 
 ## Getting Started
 
@@ -83,9 +94,6 @@ For copyright related reaons, no default icons will be provided.
 
 This project is licensed under the MIT License - see the LICENSE file for details (if applicable).
 
-
-
 # Backlog Features
-- (Critical) Create Group
-- (Critical) Add/Remove Shortcuts
 - Clean up unused icons
+- Keyboard navigation for shortcut items
