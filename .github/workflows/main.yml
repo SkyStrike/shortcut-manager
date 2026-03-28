@@ -52,7 +52,7 @@ jobs:
 
     - name: Zip the Output
       shell: pwsh
-      run: Compress-Archive -Path ./publish/* -DestinationPath ./ShortcutManager_v${{ steps.gitversion.outputs.MajorMinorPatch }}.zip
+      run: Get-ChildItem -Path ./publish/* -Exclude *.pdb | Compress-Archive -DestinationPath ./ShortcutManager_v${{ steps.gitversion.outputs.MajorMinorPatch }}.zip
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2

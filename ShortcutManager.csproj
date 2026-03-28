@@ -19,6 +19,8 @@
 	<ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
 	<ApplicationVersion>1.0.0.1</ApplicationVersion>
 	<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+
+	<AppxPackage>false</AppxPackage>
   </PropertyGroup>
 
   <ItemGroup>
