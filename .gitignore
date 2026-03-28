@@ -1,0 +1,38 @@
+## [Standard Visual Studio / .NET .gitignore]
+
+# Build outputs
+bin/
+obj/
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Windows-specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# NuGet
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.assets.json
+
+# User-specific / Local Environment
+*.swp
+*.bak
+*.ico
+.local
+.env
+
+# Migration Temporary Data
+tmp/
+
+# App State / Local data (Optional: uncomment if shortcuts.json is only for local dev)
+# shortcuts.json
