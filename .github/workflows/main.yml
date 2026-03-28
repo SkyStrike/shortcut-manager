@@ -21,7 +21,7 @@ jobs:
     - name: Install .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x' # Match your project version (8.0 or 9.0)
+        dotnet-version: '10.0.x'
 
     - name: Install GitVersion
       uses: gittools/actions/gitversion/setup@v1.1.1
@@ -36,15 +36,18 @@ jobs:
       run: dotnet restore
 
     - name: Publish Unpackaged App
-      # This creates a single-file EXE that is self-contained (includes runtimes)
+      # We disable PublishSingleFile and PublishTrimmed for WinUI 3 to ensure 
+      # all resources.pri and dependency DLLs are correctly loaded at runtime.
       run: >
         dotnet publish ShortcutManager.csproj
         -c Release 
         -r win-x64 
         --self-contained true 
-        -p:PublishSingleFile=true 
-        -p:IncludeNativeLibrariesForSelfExtract=true 
-        -p:EnableMsixTooling=true 
+        -p:PublishSingleFile=false
+        -p:PublishTrimmed=false
+        -p:PublishReadyToRun=true
+        -p:EnableMsixTooling=true
+        -p:WindowsPackageType=None
         -p:PlatformTarget=x64
         -p:Version=${{ steps.gitversion.outputs.AssemblySemVer }} 
         -p:InformationalVersion=${{ steps.gitversion.outputs.InformationalVersion }}
@@ -52,7 +55,12 @@ jobs:
 
     - name: Zip the Output
       shell: pwsh
-      run: Get-ChildItem -Path ./publish/* -Exclude *.pdb | Compress-Archive -DestinationPath ./ShortcutManager_v${{ steps.gitversion.outputs.MajorMinorPatch }}.zip
+      run: |
+        # Remove debug symbols and documentation to keep the release clean
+        Get-ChildItem -Path ./publish -Include *.pdb, *.xml -Recurse | Remove-Item -Force
+        
+        # Compress the entire publish directory including subfolders (like icons/)
+        Compress-Archive -Path ./publish/* -DestinationPath ./ShortcutManager_v${{ steps.gitversion.outputs.MajorMinorPatch }}_x64.zip
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2

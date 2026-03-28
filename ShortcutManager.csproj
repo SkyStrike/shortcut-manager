@@ -10,17 +10,21 @@
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
-    <WinUISDKReferences>false</WinUISDKReferences>
+    <WinUISDKReferences>true</WinUISDKReferences>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>disable</Nullable>
 	<WindowsPackageType>None</WindowsPackageType>
 	<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+	<PublishSingleFile>False</PublishSingleFile>
 	  
 	<ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
 	<ApplicationVersion>1.0.0.1</ApplicationVersion>
 	<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-
+	<SelfContained>true</SelfContained>
+	<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+	  
 	<AppxPackage>false</AppxPackage>
+	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>

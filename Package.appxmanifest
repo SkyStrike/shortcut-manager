@@ -17,7 +17,7 @@
   <mp:PhoneIdentity PhoneProductId="a95d4534-8c7a-4a67-bb15-02ca1d523951" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>TestApp1</DisplayName>
+    <DisplayName>ShortcutManager</DisplayName>
     <PublisherDisplayName>gohyk</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -36,8 +36,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$" uap18:RuntimeBehavior="packagedClassicApp">
       <uap:VisualElements
-        DisplayName="TestApp1"
-        Description="TestApp1"
+        DisplayName="ShortcutManager"
+        Description="ShortcutManager"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
