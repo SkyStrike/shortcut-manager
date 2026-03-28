@@ -7,10 +7,12 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -22,6 +24,7 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
+using Windows.UI.Popups;
 using WinRT.Interop;
 
 namespace ShortcutManager
@@ -105,6 +108,7 @@ namespace ShortcutManager
                     MyTrayIcon.Dispose();
                 }
             };
+
         }
 
         private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
@@ -149,8 +153,8 @@ namespace ShortcutManager
                 if (File.Exists(jsonPath))
                 {
                     string json = File.ReadAllText(jsonPath);
-                    var groups = JsonSerializer.Deserialize<List<ShortcutGroup>>(json);
-                    
+                    var groups = JsonSerializer.Deserialize(json, ShortcutSerializationContext.Default.ListShortcutGroup);
+
                     if (groups != null)
                     {
                         MyGroups.Clear();
@@ -177,7 +181,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading shortcuts: {ex.Message}");
+                Log.Error(ex, $"Error loading shortcuts: {ex.Message}");
             }
         }
 
@@ -228,12 +232,13 @@ namespace ShortcutManager
                         )
                     }).ToList();
 
-                string json = JsonSerializer.Serialize(groupsToSave, new JsonSerializerOptions { WriteIndented = true });
+                // Use source generator for serialization
+                string json = JsonSerializer.Serialize(groupsToSave, ShortcutSerializationContext.Default.ListShortcutGroup);
                 File.WriteAllText(jsonPath, json);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error saving states: {ex.Message}");
+                Log.Error(ex, $"Error saving states: {ex.Message}");
             }
         }
 
@@ -282,10 +287,13 @@ namespace ShortcutManager
                 };
                 System.Diagnostics.Process.Start(startInfo);
             }
-            catch (System.ComponentModel.Win32Exception) { } // User cancelled UAC prompt or other launch error
+            catch (System.ComponentModel.Win32Exception ex) 
+            { 
+                Log.Warning(ex, "User cancelled UAC or error launching {Path}", item.Path);
+            }
         }
 
-        private ShortcutItem? _selectedItem;
+        private ShortcutItem _selectedItem;
 
         private void Shortcut_Tapped(object sender, TappedRoutedEventArgs e)
         {
@@ -315,26 +323,34 @@ namespace ShortcutManager
             grid.Focus(FocusState.Pointer);
         }
 
-        private void OnShortcutDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+        private async void OnShortcutDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
         {
             if (sender is FrameworkElement fe && fe.DataContext is ShortcutItem item)
             {
-                ExecuteShortcut(item);
+                if (await EnsurePathValid(item))
+                {
+                    ExecuteShortcut(item);
+                }
             }
         }
 
-        private void MenuOpen_Click(object sender, RoutedEventArgs e)
+        private async void MenuOpen_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
             {
-                ExecuteShortcut(item);
+                if (await EnsurePathValid(item))
+                {
+                    ExecuteShortcut(item);
+                }
             }
         }
 
-        private void MenuOpenDir_Click(object sender, RoutedEventArgs e)
+        private async void MenuOpenDir_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item && !string.IsNullOrEmpty(item.Path))
             {
+                if (!await EnsurePathValid(item)) return;
+
                 try
                 {
                     string folder = Path.GetDirectoryName(item.Path);
@@ -360,7 +376,7 @@ namespace ShortcutManager
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error opening directory: {ex.Message}");
+                    Log.Error(ex, $"Error opening directory: {ex.Message}");
                 }
             }
         }
@@ -382,30 +398,43 @@ namespace ShortcutManager
                 var result = await confirmDialog.ShowAsync();
                 if (result == ContentDialogResult.Primary)
                 {
-                    // Remove from all groups
-                    foreach (var group in MyGroups)
-                    {
-                        if (group.Shortcuts.Contains(item))
-                        {
-                            group.Shortcuts.Remove(item);
-                        }
-                    }
-
-                    // Ensure it's removed from search results too
-                    if (_searchResultGroup.Shortcuts.Contains(item))
-                    {
-                        _searchResultGroup.Shortcuts.Remove(item);
-                    }
-
-                    SaveStates();
-                    UpdateWindowSize();
+                    RemoveShortcutInternal(item);
                 }
             }
+        }
+
+        private void RemoveShortcutInternal(ShortcutItem item)
+        {
+            // Remove from all groups
+            foreach (var group in MyGroups)
+            {
+                if (group.Shortcuts.Contains(item))
+                {
+                    group.Shortcuts.Remove(item);
+                }
+            }
+
+            // Ensure it's removed from search results too
+            if (_searchResultGroup.Shortcuts.Contains(item))
+            {
+                _searchResultGroup.Shortcuts.Remove(item);
+            }
+
+            SaveStates();
+            UpdateWindowSize();
         }
 
         private void MenuRegenerateIcon_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
+            {
+                TriggerRegenerateIcon(item);
+            }
+        }
+
+        private async void TriggerRegenerateIcon(ShortcutItem item)
+        {
+            if (await EnsurePathValid(item))
             {
                 if (ExtractAndSaveIcon(item, force: true))
                 {
@@ -418,6 +447,8 @@ namespace ShortcutManager
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
             {
+                if (!await EnsurePathValid(item)) return;
+
                 var picker = new FileOpenPicker();
                 var hWnd = WindowNative.GetWindowHandle(this);
                 InitializeWithWindow.Initialize(picker, hWnd);
@@ -443,17 +474,53 @@ namespace ShortcutManager
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
             {
-                var dialog = new PropertiesDialog(item);
-                dialog.XamlRoot = this.Content.XamlRoot;
+                await ShowPropertiesDialogInternal(item);
+            }
+        }
+
+        private async Task ShowPropertiesDialogInternal(ShortcutItem item)
+        {
+            var dialog = new PropertiesDialog(item);
+            dialog.XamlRoot = this.Content.XamlRoot;
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                // Refresh icon in case path or name changed
+                ExtractAndSaveIcon(item, force: false);
+                SaveStates();
+            }
+        }
+
+        private async Task<bool> EnsurePathValid(ShortcutItem item)
+        {
+            if (string.IsNullOrEmpty(item.Path) || (!File.Exists(item.Path) && !Directory.Exists(item.Path)))
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "Invalid Path",
+                    Content = $"The path '{item.Path}' is invalid or no longer exists. What would you like to do?",
+                    PrimaryButtonText = "Remove Shortcut",
+                    SecondaryButtonText = "Edit Properties",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Secondary,
+                    XamlRoot = this.Content.XamlRoot
+                };
 
                 var result = await dialog.ShowAsync();
                 if (result == ContentDialogResult.Primary)
                 {
-                    // Refresh icon in case path or name changed
-                    ExtractAndSaveIcon(item, force: false);
-                    SaveStates();
+                    RemoveShortcutInternal(item);
+                    return false;
                 }
+                else if (result == ContentDialogResult.Secondary)
+                {
+                    await ShowPropertiesDialogInternal(item);
+                    return false; 
+                }
+                return false;
             }
+            return true;
         }
 
         /// <summary>
@@ -504,7 +571,7 @@ namespace ShortcutManager
                 }
 
                 string iconsDir = Path.GetDirectoryName(iconPath);
-                if (!Directory.Exists(iconsDir))
+                if (!Directory.Exists(iconsDir)) 
                 {
                     Directory.CreateDirectory(iconsDir);
                 }
@@ -534,7 +601,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error extracting icon: {ex.Message}");
+                Log.Error(ex, $"Error extracting icon: {ex.Message}");
             }
             return false;
         }
@@ -811,8 +878,8 @@ namespace ShortcutManager
             }
         }
 
-        private ShortcutItem? _draggedItem;
-        private ShortcutGroup? _draggedFromGroup;
+        private ShortcutItem _draggedItem;
+        private ShortcutGroup _draggedFromGroup;
 
         private void Shortcut_DragStarting(UIElement sender, DragStartingEventArgs e)
         {
@@ -879,6 +946,7 @@ namespace ShortcutManager
             e.DragUIOverride.IsGlyphVisible = true;
         }
 
+        [RequiresUnreferencedCode("Calls ShortcutManager.MainWindow.ResolveLnk(String)")]
         private async void Expander_Drop(object sender, DragEventArgs e)
         {
             // Internal Move: Shortcut to Group
@@ -926,7 +994,7 @@ namespace ShortcutManager
                                 }
                                 catch (Exception ex)
                                 {
-                                    System.Diagnostics.Debug.WriteLine($"Error resolving .lnk: {ex.Message}");
+                                    Log.Error(ex, $"Error resolving .lnk: {ex.Message}");
                                 }
                             }
                         }
@@ -951,11 +1019,12 @@ namespace ShortcutManager
         /// <summary>
         /// Resolves a Windows .lnk file to its actual target path and arguments.
         /// </summary>
+        [RequiresUnreferencedCode("Calls System.Runtime.InteropServices.Marshal.ReleaseComObject(Object)")]
         private (string target, string args) ResolveLnk(string lnkPath)
         {
             try
             {
-                Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
+                Type shellType = Type.GetTypeFromProgID("WScript.Shell");
                 if (shellType == null) return (null, null);
 
                 object shell = Activator.CreateInstance(shellType);
@@ -971,7 +1040,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ResolveLnk error: {ex.Message}");
+                Log.Error(ex, "ResolveLnk error for {LnkPath}", lnkPath);
                 return (null, null);
             }
         }
@@ -1061,7 +1130,7 @@ namespace ShortcutManager
             if (isAltPressed && e.Key >= Windows.System.VirtualKey.Number1 && e.Key <= Windows.System.VirtualKey.Number5)
             {
                 int index = (int)e.Key - (int)Windows.System.VirtualKey.Number1;
-                ShortcutItem? itemToLaunch = null;
+                ShortcutItem itemToLaunch = null;
 
                 // 1. Prioritize Search Results if active
                 if (MyGroups.Contains(_searchResultGroup))

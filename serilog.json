@@ -1,0 +1,23 @@
+{
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Error",
+      "Override": {
+        "Microsoft": "Warning",
+        "System": "Warning"
+      }
+    },
+    "WriteTo": [
+      {
+        "Name": "File",
+        "Args": {
+          "path": "logs/error.log",
+          "fileSizeLimitBytes": 5242880,
+          "rollOnFileSizeLimit": true,
+          "retainedFileCountLimit": 10,
+          "outputTemplate": "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+        }
+      }
+    ]
+  }
+}

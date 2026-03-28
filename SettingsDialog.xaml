@@ -26,7 +26,13 @@
 
         <StackPanel Spacing="2">
             <TextBlock Text="Version Info" Style="{StaticResource BodyStrongTextBlockStyle}"/>
-            <TextBlock x:Name="VersionTextBlock" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+            <TextBox x:Name="VersionTextBox" 
+                     IsReadOnly="True" 
+                     BorderThickness="0" 
+                     Background="Transparent"
+                     Padding="0"
+                     TextWrapping="Wrap"
+                     Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
         </StackPanel>
     </StackPanel>
 </ContentDialog>

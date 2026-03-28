@@ -1,7 +1,9 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Serilog;
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
 
@@ -36,24 +38,28 @@ namespace ShortcutManager
         {
             try
             {
-                // Retrieve assembly version for the build number display
-                var assembly = Assembly.GetExecutingAssembly();
-                var version = assembly.GetName().Version;
-                VersionTextBlock.Text = $"Build: {version?.ToString() ?? "Unknown"}";
+                // This pulls the version GitVersion calculated during the build
+                var version = typeof(MainWindow).Assembly
+                    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+                    .InformationalVersion;
+
+                VersionTextBox.Text = $"Version: {version}";
+
 
                 // Check if the application is already configured to run at startup
                 StartupCheckBox.IsChecked = File.Exists(GetStartupShortcutPath());
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error loading settings: {ex.Message}");
-                VersionTextBlock.Text = "Build: Version info unavailable";
+                Log.Error(ex, $"Error loading settings: {ex.Message}");
+                VersionTextBox.Text = "Build: Version info unavailable";
             }
         }
 
         /// <summary>
         /// Handles the Checked event to create a startup shortcut.
         /// </summary>
+        [RequiresUnreferencedCode("Calls ShortcutManager.SettingsDialog.CreateShortcut(String, String)")]
         private void StartupCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             try
@@ -67,7 +73,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error enabling startup: {ex.Message}");
+                Log.Error(ex, $"Error enabling startup: {ex.Message}");
             }
         }
 
@@ -86,7 +92,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error disabling startup: {ex.Message}");
+                Log.Error(ex, $"Error disabling startup: {ex.Message}");
             }
         }
 
@@ -95,6 +101,7 @@ namespace ShortcutManager
         /// </summary>
         /// <param name="targetPath">The application executable path.</param>
         /// <param name="shortcutPath">The destination .lnk path.</param>
+        [RequiresUnreferencedCode("Calls System.Runtime.InteropServices.Marshal.ReleaseComObject(Object)")]
         private void CreateShortcut(string targetPath, string shortcutPath)
         {
             try
@@ -117,7 +124,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"CreateShortcut error: {ex.Message}");
+                Log.Error(ex, "CreateShortcut error for {ShortcutPath}", shortcutPath);
             }
         }
 
@@ -134,7 +141,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error opening directory: {ex.Message}");
+                Log.Error(ex, $"Error opening directory: {ex.Message}");
             }
         }
 
@@ -152,7 +159,7 @@ namespace ShortcutManager
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error opening startup directory: {ex.Message}");
+                Log.Error(ex, $"Error opening startup directory: {ex.Message}");
             }
         }
     }
