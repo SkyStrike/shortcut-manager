@@ -19,6 +19,9 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - Drag files, folders, or Windows shortcuts (`.lnk`) directly onto a group to add them.
   - Rearrange shortcuts within a group or move them between groups by dragging icons.
   - Automatic resolution of `.lnk` targets and command-line arguments.
+- **🛡️ Path Validation:**
+  - Automatically verifies file/directory existence before performing any action.
+  - Interactive recovery options: If a path is broken, you can choose to **Remove** the shortcut or **Edit** its properties immediately.
 - **🖼️ Smart Icon Cache:** 
   - Centralized icon extraction and caching based on file extensions or executable names.
   - Portable configuration using relative paths for cached icons.
@@ -39,6 +42,7 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - **Hotkeys:**
     - `F1 - F5`: Toggle expansion of the first 5 shortcut groups.
     - `Alt + 1 - 5`: Quick-launch the first 5 items (from search results or the active group).
+- **🛡️ Error Logging:** Robust exception tracking using Serilog, with automatic log rotation (5MB limit) at `logs/error.log`. Configuration is externalized in `serilog.json`.
 
 ## Tech Stack
 
@@ -46,7 +50,8 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 - **UI Components:** Microsoft UI Xaml
 - **Icons:** Segoe Fluent Icons
 - **Tray Icon:** [H.NotifyIcon.WinUI](https://github.com/HavenDV/H.NotifyIcon)
-- **Serialization:** System.Text.Json
+- **Logging:** Serilog
+- **Serialization:** System.Text.Json (with Source Generators for NativeAOT support)
 
 ## Configuration & Settings
 
@@ -57,28 +62,7 @@ Access by right-clicking the application background:
 - **Run at Windows Startup:** Automatically creates/removes a shortcut in the Windows Startup folder.
 - **Open Application Directory:** Quickly access the app files.
 - **Open Startup Directory:** Manage the startup shortcut manually.
-- **Version Info:** Displays the current build number.
-
-### JSON Structure
-
-```json
-[
-  {
-    "GroupName": "Browsers",
-    "IsExpanded": true,
-    "Shortcuts": [
-      {
-        "text": "Google Chrome",
-        "application": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-        "icon": "icons/chrome.ico",
-        "args": "--incognito",
-        "runasAdmin": false,
-        "id": "guid-here"
-      }
-    ]
-  }
-]
-```
+- **Version Info:** Displays the current version (GitVersion).
 
 ## Getting Started
 
@@ -94,9 +78,9 @@ Access by right-clicking the application background:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details (if applicable).
+This project is licensed under the MIT License.
 
 # Backlog Features
-- Clean up unused icons
-- Support for custom group icons
 - Keyboard navigation for shortcut items (Arrow keys)
+- Support for custom group icons
+- Support for URL-based shortcuts
