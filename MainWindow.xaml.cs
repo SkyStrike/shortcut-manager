@@ -651,6 +651,64 @@ namespace ShortcutManager
             }
         }
 
+        private async void MenuNewGroup_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new InputDialog("New Group", "Enter the name for the new group:");
+            dialog.XamlRoot = this.Content.XamlRoot;
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.InputText))
+            {
+                var newGroup = new ShortcutGroup { GroupName = dialog.InputText, IsExpanded = true };
+                MyGroups.Add(newGroup);
+                SaveStates();
+            }
+        }
+
+        private async void MenuGroupRename_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
+            {
+                if (group == _searchResultGroup) return;
+
+                var dialog = new InputDialog("Rename Group", "Enter the new name for the group:", group.GroupName);
+                dialog.XamlRoot = this.Content.XamlRoot;
+
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.InputText))
+                {
+                    group.GroupName = dialog.InputText;
+                    SaveStates();
+                }
+            }
+        }
+
+        private async void MenuGroupDelete_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup group)
+            {
+                if (group == _searchResultGroup) return;
+
+                ContentDialog deleteDialog = new ContentDialog
+                {
+                    Title = "Delete Group",
+                    Content = $"Are you sure you want to delete the group '{group.GroupName}'? All shortcuts within this group will be lost.",
+                    PrimaryButtonText = "Delete",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.Content.XamlRoot
+                };
+
+                var result = await deleteDialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                    MyGroups.Remove(group);
+                    SaveStates();
+                    UpdateWindowSize();
+                }
+            }
+        }
+
         private ShortcutItem? _draggedItem;
         private ShortcutGroup? _draggedFromGroup;
 

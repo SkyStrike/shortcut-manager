@@ -16,6 +16,15 @@
     </Window.SystemBackdrop>
 
     <Grid Background="Transparent" PointerPressed="RootGrid_PointerPressed" ToolTipService.ToolTip="">
+        <Grid.ContextFlyout>
+            <MenuFlyout>
+                <MenuFlyoutItem Text="New Group" Click="MenuNewGroup_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE710;" FontFamily="Segoe Fluent Icons" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+            </MenuFlyout>
+        </Grid.ContextFlyout>
         <Grid.KeyboardAccelerators>
             <KeyboardAccelerator Key="Escape" Invoked="OnEscPressed"/>
         </Grid.KeyboardAccelerators>
@@ -84,6 +93,17 @@
                                     <MenuFlyoutItem Text="Move to Bottom" Click="MenuGroupMoveToBottom_Click">
                                         <MenuFlyoutItem.Icon>
                                             <FontIcon Glyph="&#xE896;" FontFamily="Segoe Fluent Icons" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutSeparator />
+                                    <MenuFlyoutItem Text="Rename" Click="MenuGroupRename_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE8AC;" FontFamily="Segoe Fluent Icons" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem Text="Delete Group" Click="MenuGroupDelete_Click" Foreground="Red">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE74D;" FontFamily="Segoe Fluent Icons" Foreground="Red" />
                                         </MenuFlyoutItem.Icon>
                                     </MenuFlyoutItem>
                                 </MenuFlyout>
