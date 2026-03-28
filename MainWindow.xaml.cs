@@ -272,7 +272,7 @@ namespace ShortcutManager
         {
             if (this.Content is FrameworkElement root && _appWindow != null)
             {
-                root.Measure(new Size(_appWindow.Size.Width, double.PositiveInfinity));
+                root.Measure(new Windows.Foundation.Size(_appWindow.Size.Width, double.PositiveInfinity));
                 double desiredHeight = root.DesiredSize.Height;
 
                 var displayArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
@@ -334,7 +334,7 @@ namespace ShortcutManager
             }
         }
 
-        private void SelectShortcut(ShortcutItem item, Grid? grid)
+        private void SelectShortcut(ShortcutItem item, Grid grid)
         {
             if (_selectedItem != null && _selectedItem != item)
             {
@@ -1320,7 +1320,7 @@ namespace ShortcutManager
             if (e.DataView.Contains(StandardDataFormats.StorageItems))
             {
                 var items = await e.DataView.GetStorageItemsAsync();
-                ShortcutGroup? finalTargetGroup = null;
+                ShortcutGroup finalTargetGroup = null;
 
                 if (sender is Expander expander2 && expander2.DataContext is ShortcutGroup group)
                 {
@@ -1517,7 +1517,7 @@ namespace ShortcutManager
             if (isAltPressed && e.Key >= Windows.System.VirtualKey.Number1 && e.Key <= Windows.System.VirtualKey.Number5)
             {
                 int index = (int)e.Key - (int)Windows.System.VirtualKey.Number1;
-                ShortcutItem? itemToLaunch = null;
+                ShortcutItem itemToLaunch = null;
 
                 // 1. Prioritize Search Results if active
                 if (MyGroups.Contains(_searchResultGroup))
