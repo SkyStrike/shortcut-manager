@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Serilog;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ShortcutManager
@@ -68,8 +69,26 @@ namespace ShortcutManager
         /// </summary>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            _window = new MainWindow();
-            _window.Activate();
+            // Environment.GetCommandLineArgs is often more reliable for unpackaged apps
+            var commandLineArgs = Environment.GetCommandLineArgs();
+            Log.Information("CommandLineArgs: {Args}", string.Join(" ", commandLineArgs));
+            Log.Information("WinUI Args: {Args}", args.Arguments);
+
+            bool hasHiddenArg = (args.Arguments != null && (args.Arguments.Contains("-hidden") || args.Arguments.Contains("/hidden"))) ||
+                                 commandLineArgs.Any(a => a.Equals("-hidden", StringComparison.OrdinalIgnoreCase) || 
+                                                         a.Equals("/hidden", StringComparison.OrdinalIgnoreCase));
+
+            _window = new MainWindow(hasHiddenArg);
+
+            if (hasHiddenArg)
+            {
+                // We don't call Activate() so the window remains hidden
+                Log.Information("Application started hidden (background mode)");
+            }
+            else
+            {
+                _window.Activate();
+            }
         }
     }
 }

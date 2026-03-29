@@ -9,6 +9,7 @@
 
     <StackPanel Spacing="15" Margin="0,10,0,0" Width="400">
         <CheckBox x:Name="StartupCheckBox" Content="Run at Windows Startup" Checked="StartupCheckBox_Checked" Unchecked="StartupCheckBox_Unchecked"/>
+        <CheckBox x:Name="StartHiddenCheckBox" Content="Start Hidden (System Tray only)" Checked="StartHiddenCheckBox_Checked" Unchecked="StartHiddenCheckBox_Unchecked" Margin="25,-10,0,0" IsEnabled="{Binding ElementName=StartupCheckBox, Path=IsChecked}"/>
         
         <Button HorizontalAlignment="Stretch" Click="OpenDirButton_Click">
             <StackPanel Orientation="Horizontal" Spacing="8">

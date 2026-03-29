@@ -183,7 +183,7 @@ namespace ShortcutManager
         // Path to the configuration file
         private string shortcutFile = Path.Combine(AppContext.BaseDirectory, "shortcuts.json");
 
-        public MainWindow()
+        public MainWindow(bool startHidden = false)
         {
             InitializeComponent();
 
@@ -219,6 +219,11 @@ namespace ShortcutManager
                     int y = workArea.Y + (workArea.Height - 600) / 2 - 50; 
                     _appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, minHeight));
                 }
+
+                if (startHidden)
+                {
+                    _appWindow.Hide();
+                }
             }
 
             // Set system backdrop to Acrylic for modern Windows 11 aesthetics
@@ -227,8 +232,11 @@ namespace ShortcutManager
             LoadShortcuts();
             GroupsList.ItemsSource = MyGroups;
             
-            // Adjust window size after initial layout
-            this.DispatcherQueue.TryEnqueue(() => UpdateWindowSize());
+            // Adjust window size after initial layout, only if not starting hidden
+            if (!startHidden)
+            {
+                this.DispatcherQueue.TryEnqueue(() => UpdateWindowSize());
+            }
 
             // Auto-clear selection when the app loses focus
             this.Activated += MainWindow_Activated;

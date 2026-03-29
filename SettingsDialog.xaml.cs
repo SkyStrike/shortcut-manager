@@ -16,6 +16,7 @@ namespace ShortcutManager
     {
         private const string ShortcutName = "ShortcutManager.lnk";
         private MainWindow _mainWindow;
+        private bool _isUpdatingSettings = false;
 
         public SettingsDialog(MainWindow mainWindow)
         {
@@ -38,6 +39,7 @@ namespace ShortcutManager
         /// </summary>
         private void LoadSettings()
         {
+            _isUpdatingSettings = true;
             try
             {
                 // This pulls the version GitVersion calculated during the build
@@ -48,12 +50,49 @@ namespace ShortcutManager
                 VersionTextBox.Text = $"Version: {version}";
 
                 // Check if the application is already configured to run at startup
-                StartupCheckBox.IsChecked = File.Exists(GetStartupShortcutPath());
+                string shortcutPath = GetStartupShortcutPath();
+                bool exists = File.Exists(shortcutPath);
+                
+                // Set these without triggering the logic in event handlers
+                StartupCheckBox.IsChecked = exists;
+                if (exists)
+                {
+                    StartHiddenCheckBox.IsChecked = CheckIfShortcutIsHidden(shortcutPath);
+                }
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error loading settings");
                 VersionTextBox.Text = "Build: Version info unavailable";
+            }
+            finally
+            {
+                _isUpdatingSettings = false;
+            }
+        }
+
+        private bool CheckIfShortcutIsHidden(string shortcutPath)
+        {
+            try
+            {
+                Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+                if (shellType == null) return false;
+
+                object shell = Activator.CreateInstance(shellType);
+                dynamic shortcut = shellType.InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { shortcutPath });
+                
+                string args = shortcut.Arguments;
+                bool isHidden = !string.IsNullOrEmpty(args) && (args.Contains("-hidden") || args.Contains("/hidden"));
+
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(shortcut);
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(shell);
+                
+                return isHidden;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Could not read shortcut arguments: {Path}", shortcutPath);
+                return false;
             }
         }
 
@@ -62,14 +101,11 @@ namespace ShortcutManager
         /// </summary>
         private void StartupCheckBox_Checked(object sender, RoutedEventArgs e)
         {
+            if (_isUpdatingSettings) return;
+
             try
             {
-                string shortcutPath = GetStartupShortcutPath();
-                if (!File.Exists(shortcutPath))
-                {
-                    string targetPath = Process.GetCurrentProcess().MainModule.FileName;
-                    CreateShortcut(targetPath, shortcutPath);
-                }
+                UpdateStartupShortcut();
             }
             catch (Exception ex)
             {
@@ -82,6 +118,8 @@ namespace ShortcutManager
         /// </summary>
         private void StartupCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
+            if (_isUpdatingSettings) return;
+
             try
             {
                 string shortcutPath = GetStartupShortcutPath();
@@ -96,12 +134,43 @@ namespace ShortcutManager
             }
         }
 
+        private void StartHiddenCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_isUpdatingSettings) return;
+            UpdateStartupShortcut();
+        }
+
+        private void StartHiddenCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (_isUpdatingSettings) return;
+            UpdateStartupShortcut();
+        }
+
+        private void UpdateStartupShortcut()
+        {
+            if (StartupCheckBox.IsChecked != true) return;
+
+            try
+            {
+                string shortcutPath = GetStartupShortcutPath();
+                string targetPath = Process.GetCurrentProcess().MainModule.FileName;
+                bool startHidden = StartHiddenCheckBox.IsChecked ?? false;
+                
+                CreateShortcut(targetPath, shortcutPath, startHidden);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating startup shortcut");
+            }
+        }
+
         /// <summary>
         /// Uses COM (WScript.Shell) to create a Windows shell shortcut.
         /// </summary>
         /// <param name="targetPath">The application executable path.</param>
         /// <param name="shortcutPath">The destination .lnk path.</param>
-        private void CreateShortcut(string targetPath, string shortcutPath)
+        /// <param name="startHidden">Whether to add the /hidden argument.</param>
+        private void CreateShortcut(string targetPath, string shortcutPath, bool startHidden)
         {
             try
             {
@@ -114,6 +183,7 @@ namespace ShortcutManager
                 
                 shortcut.TargetPath = targetPath;
                 shortcut.WorkingDirectory = Path.GetDirectoryName(targetPath);
+                shortcut.Arguments = startHidden ? "/hidden" : "";
                 shortcut.Description = "Shortcut Manager";
                 shortcut.Save();
 
