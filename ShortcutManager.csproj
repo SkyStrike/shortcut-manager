@@ -56,9 +56,6 @@
     <PackageReference Include="System.Drawing.Common" Version="10.0.5" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="shortcuts.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="serilog.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

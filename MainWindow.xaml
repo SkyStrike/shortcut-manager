@@ -23,6 +23,11 @@
                         <FontIcon Glyph="&#xE710;" FontFamily="Segoe Fluent Icons" />
                     </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Reload" Click="MenuReload_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE72C;" FontFamily="Segoe Fluent Icons" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Settings" Click="MenuSettings_Click">
                     <MenuFlyoutItem.Icon>

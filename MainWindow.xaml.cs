@@ -53,9 +53,72 @@ namespace ShortcutManager
             public string szTypeName;
         }
 
+        [ComImport]
+        [Guid("00021401-0000-0000-C000-000000000046")]
+        private class ShellLink { }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct WIN32_FIND_DATAW
+        {
+            public uint dwFileAttributes;
+            public System.Runtime.InteropServices.ComTypes.FILETIME ftCreationTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME ftLastAccessTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME ftLastWriteTime;
+            public uint nFileSizeHigh;
+            public uint nFileSizeLow;
+            public uint dwReserved0;
+            public uint dwReserved1;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+            public string cFileName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 14)]
+            public string cAlternateFileName;
+        }
+
+        [ComImport]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [Guid("000214F9-0000-0000-C000-000000000046")]
+        private interface IShellLinkW
+        {
+            void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszFile, int cchMaxPath, out WIN32_FIND_DATAW pfd, int fFlags);
+            void GetIDList(out IntPtr ppidl);
+            void SetIDList(IntPtr pidl);
+            void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszName, int cchMaxName);
+            void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
+            void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszDir, int cchMaxPath);
+            void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
+            void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszArgs, int cchMaxPath);
+            void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
+            void GetHotkey(out short pwHotkey);
+            void SetHotkey(short wHotkey);
+            void GetShowCmd(out int piShowCmd);
+            void SetShowCmd(int iShowCmd);
+            void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszIconPath, int cchIconPath, out int piIcon);
+            void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
+            void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, int dwReserved);
+            void Resolve(IntPtr hwnd, int fFlags);
+            void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
+        }
+
+        [ComImport]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [Guid("0000010b-0000-0000-C000-000000000046")]
+        private interface IPersistFile
+        {
+            void GetClassID(out Guid pClassID);
+            [PreserveSig] int IsDirty();
+            void Load([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, int dwMode);
+            void Save([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, [MarshalAs(UnmanagedType.Bool)] bool fRemember);
+            void SaveCompleted([MarshalAs(UnmanagedType.LPWStr)] string pszFileName);
+            void GetCurFile([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder ppszFileName);
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+        private static extern uint ExtractIconEx(string szFileName, int nIconIndex, IntPtr[] phiconLarge, IntPtr[] phiconSmall, uint nIcons);
+
         private const uint SHGFI_ICON = 0x100;
         private const uint SHGFI_LARGEICON = 0x0;
         private const uint SHGFI_SMALLICON = 0x1;
+        private const uint SHGFI_LINKOVERLAY = 0x8000;
         private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
         private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
         private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
@@ -201,10 +264,16 @@ namespace ShortcutManager
                 if (File.Exists(jsonPath))
                 {
                     string json = File.ReadAllText(jsonPath);
+                    if (string.IsNullOrWhiteSpace(json))
+                    {
+                        CreateDefaultGroup();
+                        return;
+                    }
+
                     // Use source generator for deserialization to support NativeAOT/Trimming
                     var groups = JsonSerializer.Deserialize(json, ShortcutSerializationContext.Default.ListShortcutGroup);
 
-                    if (groups != null)
+                    if (groups != null && groups.Count > 0)
                     {
                         MyGroups.Clear();
                         foreach (var group in groups)
@@ -226,12 +295,31 @@ namespace ShortcutManager
                             MyGroups.Add(group);
                         }
                     }
+                    else
+                    {
+                        CreateDefaultGroup();
+                    }
+                }
+                else
+                {
+                    CreateDefaultGroup();
                 }
             }
             catch (Exception ex)
             {
                 Log.Error(ex, $"Error loading shortcuts: {ex.Message}");
+                if (MyGroups.Count == 0)
+                {
+                    CreateDefaultGroup();
+                }
             }
+        }
+
+        private void CreateDefaultGroup()
+        {
+            MyGroups.Clear();
+            MyGroups.Add(new ShortcutGroup { GroupName = "Default", IsExpanded = true });
+            SaveStates();
         }
 
         /// <summary>
@@ -805,55 +893,61 @@ namespace ShortcutManager
                         }
                     }
                 }
-                else
+                else if (isFile && Path.GetExtension(effectiveSource).ToLower() == ".lnk")
                 {
-                    // Use Win32 SHGetFileInfo for high-quality extraction (32-bit with Alpha)
-                    SHFILEINFO shinfo = new SHFILEINFO();
-                    uint flags = SHGFI_ICON | SHGFI_LARGEICON;
-                    uint attributes = FILE_ATTRIBUTE_NORMAL;
+                    // Special handling for .lnk files to get the specific icon assigned to the shortcut
+                    try
+                    {
+                        ShellLink shellLink = new ShellLink();
+                        IShellLinkW link = (IShellLinkW)shellLink;
+                        IPersistFile file = (IPersistFile)shellLink;
+                        file.Load(effectiveSource, 0);
 
-                    // If it doesn't exist, or if it's a directory, we can use SHGFI_USEFILEATTRIBUTES
-                    // to get the icon associated with the file type or folder.
-                    if (!isFile && !isDir)
-                    {
-                        flags |= SHGFI_USEFILEATTRIBUTES;
-                        if (string.IsNullOrEmpty(Path.GetExtension(effectiveSource)))
+                        System.Text.StringBuilder iconPathBuilder = new System.Text.StringBuilder(260);
+                        link.GetIconLocation(iconPathBuilder, iconPathBuilder.Capacity, out int iconIndex);
+                        
+                        string finalIconSource = iconPathBuilder.ToString();
+                        if (string.IsNullOrEmpty(finalIconSource))
                         {
-                            attributes = FILE_ATTRIBUTE_DIRECTORY;
+                            // Fallback to target path if no specific icon is set
+                            System.Text.StringBuilder targetPathBuilder = new System.Text.StringBuilder(260);
+                            WIN32_FIND_DATAW fd = new WIN32_FIND_DATAW();
+                            link.GetPath(targetPathBuilder, targetPathBuilder.Capacity, out fd, 0);
+                            finalIconSource = targetPathBuilder.ToString();
+                            iconIndex = 0;
                         }
-                    }
-                    else if (isDir)
-                    {
-                        attributes = FILE_ATTRIBUTE_DIRECTORY;
-                    }
 
-                    IntPtr hImgLarge = SHGetFileInfo(effectiveSource, attributes, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
-                    
-                    if (shinfo.hIcon != IntPtr.Zero)
-                    {
-                        using (var icon = Icon.FromHandle(shinfo.hIcon))
+                        finalIconSource = Environment.ExpandEnvironmentVariables(finalIconSource);
+                        
+                        IntPtr[] largeIcons = new IntPtr[1];
+                        ExtractIconEx(finalIconSource, iconIndex, largeIcons, null, 1);
+
+                        if (largeIcons[0] != IntPtr.Zero)
                         {
-                            using (var bitmap = icon.ToBitmap())
-                            {
-                                bitmap.Save(iconPath, ImageFormat.Png);
-                            }
-                        }
-                        DestroyIcon(shinfo.hIcon);
-                    }
-                    else if (isFile)
-                    {
-                        // Fallback to legacy method if SHGetFileInfo fails
-                        using (var icon = Icon.ExtractAssociatedIcon(effectiveSource))
-                        {
-                            if (icon != null)
+                            using (var icon = Icon.FromHandle(largeIcons[0]))
                             {
                                 using (var bitmap = icon.ToBitmap())
                                 {
                                     bitmap.Save(iconPath, ImageFormat.Png);
                                 }
                             }
+                            DestroyIcon(largeIcons[0]);
+                        }
+                        else
+                        {
+                            // Final fallback to SHGetFileInfo if ExtractIconEx fails
+                            ExtractUsingShellInfo(effectiveSource, iconPath, isFile, isDir);
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Failed to extract icon via IShellLink for {Path}, falling back", effectiveSource);
+                        ExtractUsingShellInfo(effectiveSource, iconPath, isFile, isDir);
+                    }
+                }
+                else
+                {
+                    ExtractUsingShellInfo(effectiveSource, iconPath, isFile, isDir);
                 }
 
                 // Force UI refresh by triggering property change (even if path is identical)
@@ -866,6 +960,59 @@ namespace ShortcutManager
                 Log.Error(ex, "Error extracting icon for {Path}", item.Path);
             }
             return false;
+        }
+
+        private void ExtractUsingShellInfo(string effectiveSource, string iconPath, bool isFile, bool isDir)
+        {
+            // Use Win32 SHGetFileInfo for high-quality extraction (32-bit with Alpha)
+            SHFILEINFO shinfo = new SHFILEINFO();
+            uint flags = SHGFI_ICON | SHGFI_LARGEICON;
+            uint attributes = FILE_ATTRIBUTE_NORMAL;
+
+            string extension = Path.GetExtension(effectiveSource).ToLower();
+
+            // If it doesn't exist, or if it's a directory, we can use SHGFI_USEFILEATTRIBUTES
+            // to get the icon associated with the file type or folder.
+            if (!isFile && !isDir)
+            {
+                flags |= SHGFI_USEFILEATTRIBUTES;
+                if (string.IsNullOrEmpty(extension))
+                {
+                    attributes = FILE_ATTRIBUTE_DIRECTORY;
+                }
+            }
+            else if (isDir)
+            {
+                attributes = FILE_ATTRIBUTE_DIRECTORY;
+            }
+
+            IntPtr hImgLarge = SHGetFileInfo(effectiveSource, attributes, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
+
+            if (shinfo.hIcon != IntPtr.Zero)
+            {
+                using (var icon = Icon.FromHandle(shinfo.hIcon))
+                {
+                    using (var bitmap = icon.ToBitmap())
+                    {
+                        bitmap.Save(iconPath, ImageFormat.Png);
+                    }
+                }
+                DestroyIcon(shinfo.hIcon);
+            }
+            else if (isFile)
+            {
+                // Fallback to legacy method if SHGetFileInfo fails
+                using (var icon = Icon.ExtractAssociatedIcon(effectiveSource))
+                {
+                    if (icon != null)
+                    {
+                        using (var bitmap = icon.ToBitmap())
+                        {
+                            bitmap.Save(iconPath, ImageFormat.Png);
+                        }
+                    }
+                }
+            }
         }
 
         private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
@@ -1076,6 +1223,12 @@ namespace ShortcutManager
                 MyGroups.Add(newGroup);
                 SaveStates();
             }
+        }
+
+        private void MenuReload_Click(object sender, RoutedEventArgs e)
+        {
+            LoadShortcuts();
+            UpdateWindowSize();
         }
 
         private async void MenuSettings_Click(object sender, RoutedEventArgs e)
@@ -1399,6 +1552,7 @@ namespace ShortcutManager
                     foreach (var storageItem in items)
                     {
                         string targetPath = storageItem.Path;
+                        string originalLnkPath = null;
                         string arguments = "";
                         string name = storageItem.Name;
 
@@ -1407,6 +1561,7 @@ namespace ShortcutManager
                             name = file.DisplayName;
                             if (file.FileType.Equals(".lnk", StringComparison.OrdinalIgnoreCase))
                             {
+                                originalLnkPath = targetPath;
                                 try
                                 {
                                     // Resolve Windows shortcuts to their targets
@@ -1432,7 +1587,7 @@ namespace ShortcutManager
                             Id = Guid.NewGuid().ToString()
                         };
 
-                        ExtractAndSaveIcon(newItem, null, false);
+                        ExtractAndSaveIcon(newItem, originalLnkPath, false);
                         finalTargetGroup.Shortcuts.Add(newItem);
                     }
                     SaveStates();
