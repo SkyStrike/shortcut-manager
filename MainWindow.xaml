@@ -146,8 +146,8 @@
                             <ItemsRepeater x:Name="ShortcutsRepeater" ItemsSource="{Binding Shortcuts}">
                                 <ItemsRepeater.Layout>
                                     <UniformGridLayout Orientation="Horizontal" 
-                                                       MinItemWidth="105" 
-                                                       MinItemHeight="82"
+                                                       MinItemWidth="120" 
+                                                       MinItemHeight="50"
                                                        MinColumnSpacing="5" 
                                                        MinRowSpacing="5" />
                                 </ItemsRepeater.Layout>
@@ -210,13 +210,16 @@
                                                 </MenuFlyout>
                                             </Grid.ContextFlyout>
 
+                                            <!-- SelectionBorder provides the visual highlight and ensures items are centered within their grid cell -->
                                             <Border x:Name="SelectionBorder" 
                                                     CornerRadius="4" 
                                                     Margin="2"
+                                                    Padding="4"
+                                                    HorizontalAlignment="Center"
                                                     Background="{Binding IsSelected, Converter={StaticResource SelectionBrushConverter}, Mode=OneWay}"
                                                     BorderBrush="{Binding IsSelected, Converter={StaticResource SelectionBorderBrushConverter}, Mode=OneWay}"
                                                     BorderThickness="1">
-                                                <StackPanel Width="100" Spacing="5" Margin="5">
+                                                <StackPanel Width="100" Spacing="5">
                                                     <Image Source="{Binding Icon}" 
                                                            Width="32" 
                                                            Height="32" 

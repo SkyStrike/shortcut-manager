@@ -24,16 +24,18 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - Automatically verifies file/directory existence before performing any action.
   - Interactive recovery options: If a path is broken, you can choose to **Remove** the shortcut or **Edit** its properties immediately.
 - **🖼️ Smart Icon Cache:** 
-  - **High-Quality Extraction:** Uses Win32 SHGetFileInfo for full-color, 32-bit alpha-transparent icons.
+  - **High-Quality Extraction:** Uses Win32 `SHGetFileInfo` and `IShellLink` for full-color, 32-bit alpha-transparent icons.
+  - **LNK Precision:** Specifically extracts the icon assigned to a `.lnk` file (shortcut), even if it differs from the target's default icon (e.g., for Web Apps).
+  - **Folder Support:** Correctly identifies and displays Windows-associated folder icons.
   - **PNG Storage:** Icons are cached as PNG files to preserve transparency and quality.
-  - Centralized caching based on file extensions or executable names.
-  - Portable configuration using relative paths for cached icons.
 - **🔍 Fast Search:** 
   - Quickly find any shortcut with a built-in search box.
+  - **Instant Search:** Press any letter (`a-z`) while the app is active to instantly focus the search box and start typing.
   - **Auto-Highlight:** The first search result is automatically selected for immediate launching.
 - **🎨 Modern Fluent UI:** 
   - Clean, borderless design using **Desktop Acrylic** backdrop.
   - **Windows 11 Fluent Icons** (Segoe Fluent Icons) throughout the interface.
+  - **Smooth Animations:** Integrated `RepositionThemeTransition` for fluid layout shifts during group expansion.
   - Visual feedback with hover and selection highlights.
 - **📥 System Tray Integration:** 
   - Stays out of your way in the system tray.
@@ -45,11 +47,16 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - `Enter`: Launch the currently highlighted shortcut.
   - `Esc`: Clear selection, clear search, or hide the window.
   - `Right-Click`: Access comprehensive context menus for shortcuts, groups, and the application background.
+  - **Reload:** Quickly refresh the application state from `shortcuts.json` via the context menu.
   - **Navigation:** Use **Arrow Keys** (Left, Right, Up, Down) to navigate between shortcuts and across different groups.
   - **Hotkeys:**
     - `F1 - F5`: Toggle expansion of the first 5 shortcut groups.
     - `Alt + 1 - 5`: Quick-launch the first 5 items (from search results or the active group).
-- **🛡️ Error Logging:** Robust exception tracking using Serilog, with automatic log rotation (5MB limit) at `logs/error.log`. Configuration is externalized in `serilog.json`.
+    - `a - z`: Focus search box and start typing.
+- **🛠️ Self-Healing Configuration:**
+  - **Auto-Initialization:** Automatically generates a "Default" group if `shortcuts.json` is missing or empty.
+  - **Path Validation:** Automatically verifies file/directory existence before performing any action.
+  - Interactive recovery options: If a path is broken, you can choose to **Remove** the shortcut or **Edit** its properties immediately.
 
 ## Tech Stack
 

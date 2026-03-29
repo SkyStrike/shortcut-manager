@@ -35,12 +35,11 @@ namespace ShortcutManager
     /// </summary>
     public sealed partial class MainWindow : Window
     {
-        #region Win32 API Imports
+        #region Win32 and COM Interfaces for Shortcut and Icon Handling
 
-        // For high-quality icon extraction (32-bit with Alpha)
-        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
-
+        /// <summary>
+        /// Standard Win32 File Information structure.
+        /// </summary>
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         private struct SHFILEINFO
         {
@@ -53,10 +52,9 @@ namespace ShortcutManager
             public string szTypeName;
         }
 
-        [ComImport]
-        [Guid("00021401-0000-0000-C000-000000000046")]
-        private class ShellLink { }
-
+        /// <summary>
+        /// Win32 Find Data structure used for file attribute retrieval.
+        /// </summary>
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         private struct WIN32_FIND_DATAW
         {
@@ -74,6 +72,16 @@ namespace ShortcutManager
             public string cAlternateFileName;
         }
 
+        /// <summary>
+        /// COM Coclass for ShellLink.
+        /// </summary>
+        [ComImport]
+        [Guid("00021401-0000-0000-C000-000000000046")]
+        private class ShellLink { }
+
+        /// <summary>
+        /// Interface for managing Windows Shell Shortcuts (.lnk).
+        /// </summary>
         [ComImport]
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         [Guid("000214F9-0000-0000-C000-000000000046")]
@@ -99,6 +107,9 @@ namespace ShortcutManager
             void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
         }
 
+        /// <summary>
+        /// Interface for loading and saving files via COM objects.
+        /// </summary>
         [ComImport]
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         [Guid("0000010b-0000-0000-C000-000000000046")]
@@ -112,16 +123,16 @@ namespace ShortcutManager
             void GetCurFile([Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder ppszFileName);
         }
 
+        #endregion
+
+        #region Win32 API Imports
+
+        // For high-quality icon extraction (32-bit with Alpha)
+        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
+
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern uint ExtractIconEx(string szFileName, int nIconIndex, IntPtr[] phiconLarge, IntPtr[] phiconSmall, uint nIcons);
-
-        private const uint SHGFI_ICON = 0x100;
-        private const uint SHGFI_LARGEICON = 0x0;
-        private const uint SHGFI_SMALLICON = 0x1;
-        private const uint SHGFI_LINKOVERLAY = 0x8000;
-        private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
-        private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
-        private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
 
         [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -144,6 +155,14 @@ namespace ShortcutManager
 
         private const int SW_RESTORE = 9;
         private const int SW_SHOW = 5;
+
+        private const uint SHGFI_ICON = 0x100;
+        private const uint SHGFI_LARGEICON = 0x0;
+        private const uint SHGFI_SMALLICON = 0x1;
+        private const uint SHGFI_LINKOVERLAY = 0x8000;
+        private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
+        private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+        private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
 
         #endregion
 
@@ -855,6 +874,14 @@ namespace ShortcutManager
         /// <summary>
         /// Extracts a high-quality icon from a file and saves it to the centralized cache as a PNG.
         /// </summary>
+        /// <summary>
+        /// Extracts a high-quality icon for a shortcut item and saves it to the local cache.
+        /// Supports folders, executables, .ico files, and complex .lnk shortcuts.
+        /// </summary>
+        /// <param name="item">The shortcut item to process.</param>
+        /// <param name="sourcePath">Optional explicit source path (e.g. when manually changing an icon).</param>
+        /// <param name="force">If true, regenerates the icon even if it already exists in cache.</param>
+        /// <returns>True if extraction was successful.</returns>
         private bool ExtractAndSaveIcon(ShortcutItem item, string sourcePath = null, bool force = false)
         {
             try
@@ -896,6 +923,7 @@ namespace ShortcutManager
                 else if (isFile && Path.GetExtension(effectiveSource).ToLower() == ".lnk")
                 {
                     // Special handling for .lnk files to get the specific icon assigned to the shortcut
+                    // using IShellLink COM interface.
                     try
                     {
                         ShellLink shellLink = new ShellLink();
@@ -917,6 +945,7 @@ namespace ShortcutManager
                             iconIndex = 0;
                         }
 
+                        // Resolve environment variables like %SystemRoot%
                         finalIconSource = Environment.ExpandEnvironmentVariables(finalIconSource);
                         
                         IntPtr[] largeIcons = new IntPtr[1];
@@ -962,6 +991,10 @@ namespace ShortcutManager
             return false;
         }
 
+        /// <summary>
+        /// Uses the Win32 Shell API (SHGetFileInfo) to extract high-quality, alpha-transparent icons.
+        /// Also handles folder and file-type associated icons.
+        /// </summary>
         private void ExtractUsingShellInfo(string effectiveSource, string iconPath, bool isFile, bool isDir)
         {
             // Use Win32 SHGetFileInfo for high-quality extraction (32-bit with Alpha)
@@ -1709,6 +1742,29 @@ namespace ShortcutManager
                 ClearOrHideApp();
                 e.Handled = true; 
                 return;
+            }
+
+            // Alpha-numeric: Focus Search Box if not focused and no modifier keys pressed
+            var ctrlState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
+            var altStateCurrent = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
+            bool isCtrlPressed = ctrlState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+            bool isAltPressedCurrent = altStateCurrent.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+            if (!isCtrlPressed && !isAltPressedCurrent && 
+                e.Key >= Windows.System.VirtualKey.A && e.Key <= Windows.System.VirtualKey.Z)
+            {
+                var focusedElement = FocusManager.GetFocusedElement(this.Content.XamlRoot);
+                
+                // Don't snatch focus if we're already in a text input or a dialog-like control
+                if (!(focusedElement is TextBox) && 
+                    !(focusedElement is PasswordBox) && 
+                    !(focusedElement is AutoSuggestBox) &&
+                    !object.ReferenceEquals(focusedElement, SidebarSearchBox))
+                {
+                    SidebarSearchBox.Focus(FocusState.Keyboard);
+                    // The character will naturally be typed into the focused AutoSuggestBox
+                    // as long as we don't mark the event as handled here.
+                }
             }
 
             // Enter: Launch Selected Item
