@@ -690,26 +690,47 @@ namespace ShortcutManager
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
             {
-                ContentDialog confirmDialog = new ContentDialog
-                {
-                    Title = "Remove Shortcut",
-                    Content = $"Are you sure you want to remove '{item.Name}'?",
-                    PrimaryButtonText = "Remove",
-                    CloseButtonText = "Cancel",
-                    DefaultButton = ContentDialogButton.Close,
-                    XamlRoot = this.Content.XamlRoot
-                };
-
-                var result = await confirmDialog.ShowAsync();
-                if (result == ContentDialogResult.Primary)
-                {
-                    RemoveShortcutInternal(item);
-                }
+                await RemoveShortcutWithConfirmation(item);
             }
         }
 
+        /// <summary>
+        /// Prompts the user for confirmation before removing a shortcut item.
+        /// </summary>
+        private async Task RemoveShortcutWithConfirmation(ShortcutItem item)
+        {
+            if (item == null) return;
+
+            ContentDialog confirmDialog = new ContentDialog
+            {
+                Title = "Remove Shortcut",
+                Content = $"Are you sure you want to remove '{item.Name}'?",
+                PrimaryButtonText = "Remove",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            var result = await confirmDialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                RemoveShortcutInternal(item);
+            }
+        }
+
+        /// <summary>
+        /// Performs the actual removal of a shortcut from all groups and clears the selection state.
+        /// </summary>
         private void RemoveShortcutInternal(ShortcutItem item)
         {
+            if (item == null) return;
+
+            if (_selectedItem == item)
+            {
+                _selectedItem.IsSelected = false;
+                _selectedItem = null;
+            }
+
             // Remove from all groups
             foreach (var group in MyGroups)
             {
@@ -1776,6 +1797,17 @@ namespace ShortcutManager
                     {
                         ExecuteShortcut(_selectedItem);
                     }
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            // Delete: Remove Selected Item
+            if (e.Key == Windows.System.VirtualKey.Delete)
+            {
+                if (_selectedItem != null)
+                {
+                    await RemoveShortcutWithConfirmation(_selectedItem);
                     e.Handled = true;
                     return;
                 }

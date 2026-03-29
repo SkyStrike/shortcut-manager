@@ -45,6 +45,7 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 - **🎹 Keyboard & Mouse Friendly:** 
   - `Double-Click`: Launch a shortcut.
   - `Enter`: Launch the currently highlighted shortcut.
+  - `Delete`: Remove the currently highlighted shortcut (prompts for confirmation).
   - `Esc`: Clear selection, clear search, or hide the window.
   - `Right-Click`: Access comprehensive context menus for shortcuts, groups, and the application background.
   - **Reload:** Quickly refresh the application state from `shortcuts.json` via the context menu.
