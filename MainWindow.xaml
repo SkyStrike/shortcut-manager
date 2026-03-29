@@ -140,7 +140,8 @@
                             <ItemsRepeater x:Name="ShortcutsRepeater" ItemsSource="{Binding Shortcuts}">
                                 <ItemsRepeater.Layout>
                                     <UniformGridLayout Orientation="Horizontal" 
-                                                       MinItemWidth="110" 
+                                                       MinItemWidth="105" 
+                                                       MinItemHeight="82"
                                                        MinColumnSpacing="5" 
                                                        MinRowSpacing="5" />
                                 </ItemsRepeater.Layout>
@@ -153,13 +154,19 @@
                                               RightTapped="Shortcut_RightTapped"
                     Padding="0"
                     Background="Transparent"
-                    VerticalAlignment="Top"
                     CanDrag="True"
                     DragStarting="Shortcut_DragStarting"
                     AllowDrop="True"
                     DragOver="Shortcut_DragOver"
-                    Drop="Shortcut_Drop"
-                    ToolTipService.ToolTip="{Binding Path}">
+                    Drop="Shortcut_Drop">
+                                            <ToolTipService.ToolTip>
+                                                <ToolTip>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                                                        <TextBlock Text="{Binding Path}" FontSize="11" Foreground="Gray"/>
+                                                    </StackPanel>
+                                                </ToolTip>
+                                            </ToolTipService.ToolTip>
 
                                             <Grid.ContextFlyout>
                                                 <MenuFlyout>
