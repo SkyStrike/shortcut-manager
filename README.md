@@ -33,7 +33,8 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - **Instant Search:** Press any letter (`a-z`) while the app is active to instantly focus the search box and start typing.
   - **Auto-Highlight:** The first search result is automatically selected for immediate launching.
 - **🎨 Modern Fluent UI:** 
-  - Clean, borderless design using **Desktop Acrylic** backdrop.
+  - **Truly Borderless Design:** Implements a custom borderless window using Win32 `WS_POPUP` style to eliminate the persistent white borders typically found in WinUI 3 applications.
+  - **Desktop Acrylic** backdrop for a modern Windows 11 feel.
   - **Windows 11 Fluent Icons** (Segoe Fluent Icons) throughout the interface.
   - **Smooth Animations:** Integrated `RepositionThemeTransition` for fluid layout shifts during group expansion.
   - Visual feedback with hover and selection highlights.

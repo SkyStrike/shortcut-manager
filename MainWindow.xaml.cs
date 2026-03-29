@@ -153,6 +153,33 @@ namespace ShortcutManager
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool IsIconic(IntPtr hWnd);
 
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLong")]
+        private static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        private static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong)
+        {
+            if (IntPtr.Size == 8)
+                return SetWindowLongPtr64(hWnd, nIndex, dwNewLong);
+            else
+                return new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
+        }
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        private const int GWL_STYLE = -16;
+        private const uint WS_POPUP = 0x80000000;
+        private const uint WS_VISIBLE = 0x10000000;
+        private const uint WS_CLIPSIBLINGS = 0x04000000;
+        private const uint SWP_FRAMECHANGED = 0x0020;
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOZORDER = 0x0004;
+
         private const int SW_RESTORE = 9;
         private const int SW_SHOW = 5;
 
@@ -187,7 +214,9 @@ namespace ShortcutManager
         {
             InitializeComponent();
 
-            // Set up borderless/custom title bar window
+            // Set up borderless window using custom title bar and Win32 styles
+            // Standard WinUI 3 windows often draw a 1px white border that cannot be removed via XAML or AppWindow.
+            // Using WS_POPUP style and forcing a frame change completely eliminates these persistent borders.
             this.ExtendsContentIntoTitleBar = true;
             this.SetTitleBar(null);
 
@@ -206,6 +235,13 @@ namespace ShortcutManager
                     presenter.IsMinimizable = true;
                     presenter.IsMaximizable = false;
                     presenter.SetBorderAndTitleBar(false, false);
+
+                    // Replace "Overlapped" style with "Popup" style to completely remove standard borders.
+                    // This is the most reliable way to achieve a truly borderless look in WinUI 3.
+                    SetWindowLongPtr(hWnd, GWL_STYLE, (IntPtr)unchecked(WS_POPUP | WS_VISIBLE | WS_CLIPSIBLINGS));
+                    
+                    // Force a frame update (SW_FRAMECHANGED) so the OS applies the style change immediately.
+                    SetWindowPos(hWnd, IntPtr.Zero, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER);
                 }
 
                 // Initial positioning: center horizontally, slightly above center vertically
