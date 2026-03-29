@@ -81,6 +81,12 @@
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="Transparent">
             <ItemsControl x:Name="GroupsList" Background="Transparent">
+                <ItemsControl.ItemContainerTransitions>
+                    <TransitionCollection>
+                        <AddDeleteThemeTransition />
+                        <RepositionThemeTransition />
+                    </TransitionCollection>
+                </ItemsControl.ItemContainerTransitions>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Expander Header="{Binding GroupName}" 
