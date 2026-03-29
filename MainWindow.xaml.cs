@@ -56,6 +56,9 @@ namespace ShortcutManager
         private const uint SHGFI_ICON = 0x100;
         private const uint SHGFI_LARGEICON = 0x0;
         private const uint SHGFI_SMALLICON = 0x1;
+        private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
+        private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+        private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
 
         [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -357,7 +360,7 @@ namespace ShortcutManager
             }
         }
 
-        private void SelectShortcut(ShortcutItem item, Grid? grid)
+        private void SelectShortcut(ShortcutItem item, Grid grid)
         {
             if (_selectedItem != null && _selectedItem != item)
             {
@@ -730,16 +733,30 @@ namespace ShortcutManager
             if (string.IsNullOrEmpty(filePath)) return null;
 
             string iconsDir = Path.Combine(AppContext.BaseDirectory, "icons");
-            string extension = Path.GetExtension(filePath).ToLower().TrimStart('.');
             string fileName;
 
-            if (extension == "exe")
+            if (Directory.Exists(filePath))
             {
-                fileName = Path.GetFileNameWithoutExtension(filePath).ToLower() + ".png";
+                // Standard folder icon. If we wanted to support custom folder icons per folder, 
+                // we would need a unique name here (e.g. based on path hash).
+                // For "associated" folder icon, a shared one is appropriate.
+                fileName = "folder_default.png";
             }
             else
             {
-                fileName = $"ext_{extension}.png";
+                string extension = Path.GetExtension(filePath).ToLower().TrimStart('.');
+                if (extension == "exe" || extension == "ico" || extension == "lnk")
+                {
+                    fileName = Path.GetFileNameWithoutExtension(filePath).ToLower() + ".png";
+                    if (string.IsNullOrEmpty(fileName) || fileName == ".png")
+                    {
+                        fileName = "unknown_app.png";
+                    }
+                }
+                else
+                {
+                    fileName = $"ext_{extension}.png";
+                }
             }
 
             // Sanitize filename
@@ -755,8 +772,11 @@ namespace ShortcutManager
             try
             {
                 string effectiveSource = sourcePath ?? item.Path;
-                if (string.IsNullOrEmpty(effectiveSource) || !File.Exists(effectiveSource))
+                if (string.IsNullOrEmpty(effectiveSource))
                     return false;
+
+                bool isFile = File.Exists(effectiveSource);
+                bool isDir = Directory.Exists(effectiveSource);
 
                 string iconPath = GetIconCachePath(item.Path);
                 if (iconPath == null) return false;
@@ -774,7 +794,7 @@ namespace ShortcutManager
                     Directory.CreateDirectory(iconsDir);
                 }
 
-                if (Path.GetExtension(effectiveSource).ToLower() == ".ico" && sourcePath != null)
+                if (isFile && Path.GetExtension(effectiveSource).ToLower() == ".ico" && sourcePath != null)
                 {
                     // If manually selecting an .ico, we still convert to PNG for consistency and quality
                     using (var icon = new Icon(effectiveSource))
@@ -789,7 +809,25 @@ namespace ShortcutManager
                 {
                     // Use Win32 SHGetFileInfo for high-quality extraction (32-bit with Alpha)
                     SHFILEINFO shinfo = new SHFILEINFO();
-                    IntPtr hImgLarge = SHGetFileInfo(effectiveSource, 0, ref shinfo, (uint)Marshal.SizeOf(shinfo), SHGFI_ICON | SHGFI_LARGEICON);
+                    uint flags = SHGFI_ICON | SHGFI_LARGEICON;
+                    uint attributes = FILE_ATTRIBUTE_NORMAL;
+
+                    // If it doesn't exist, or if it's a directory, we can use SHGFI_USEFILEATTRIBUTES
+                    // to get the icon associated with the file type or folder.
+                    if (!isFile && !isDir)
+                    {
+                        flags |= SHGFI_USEFILEATTRIBUTES;
+                        if (string.IsNullOrEmpty(Path.GetExtension(effectiveSource)))
+                        {
+                            attributes = FILE_ATTRIBUTE_DIRECTORY;
+                        }
+                    }
+                    else if (isDir)
+                    {
+                        attributes = FILE_ATTRIBUTE_DIRECTORY;
+                    }
+
+                    IntPtr hImgLarge = SHGetFileInfo(effectiveSource, attributes, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
                     
                     if (shinfo.hIcon != IntPtr.Zero)
                     {
@@ -802,7 +840,7 @@ namespace ShortcutManager
                         }
                         DestroyIcon(shinfo.hIcon);
                     }
-                    else
+                    else if (isFile)
                     {
                         // Fallback to legacy method if SHGetFileInfo fails
                         using (var icon = Icon.ExtractAssociatedIcon(effectiveSource))
@@ -1436,7 +1474,7 @@ namespace ShortcutManager
         /// Toggles window visibility. Intelligent foreground management:
         /// Brings to front if visible but backgrounded/minimized, otherwise toggles show/hide.
         /// </summary>
-        private void ToggleSidebarCommand_ExecuteRequested(XamlUICommand sender, ExecuteRequestedEventArgs args)
+        private void ToggleVisibilityCommand_ExecuteRequested(XamlUICommand sender, ExecuteRequestedEventArgs args)
         {
             this.DispatcherQueue.TryEnqueue(() =>
             {
