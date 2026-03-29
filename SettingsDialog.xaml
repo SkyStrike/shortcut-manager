@@ -45,6 +45,13 @@
             </StackPanel>
         </Button>
 
+        <Button HorizontalAlignment="Stretch" Click="CreateBackup_Click">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <FontIcon Glyph="&#xE7AD;" FontFamily="Segoe Fluent Icons" />
+                <TextBlock Text="Create Backup"/>
+            </StackPanel>
+        </Button>
+
         <StackPanel Spacing="2">
             <TextBlock Text="Version Info" Style="{StaticResource BodyStrongTextBlockStyle}"/>
             <TextBox x:Name="VersionTextBox" 

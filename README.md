@@ -79,6 +79,7 @@ Access by right-clicking the application background:
 - **Regenerate All Icons:** Re-extracts all icons using the high-quality Win32 method.
 - **Clean Up Unused Icons:** Removes orphaned icon files from the cache.
 - **Remove Invalid Shortcuts:** Scans and prunes shortcuts with broken paths.
+- **Create Backup:** Generates a timestamped backup of your `shortcuts.json` in a `backups/` folder.
 - **Open Application/Startup Directory:** Quick access to system folders.
 - **Version Info:** Displays the current version.
 

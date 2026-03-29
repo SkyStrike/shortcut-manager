@@ -180,5 +180,64 @@ namespace ShortcutManager
             this.Hide();
             await _mainWindow.CleanUpInvalidShortcuts();
         }
+
+        /// <summary>
+        /// Creates a backup of the shortcuts.json file in a dedicated backups directory.
+        /// </summary>
+        private async void CreateBackup_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string baseDir = AppContext.BaseDirectory;
+                string jsonPath = Path.Combine(baseDir, "shortcuts.json");
+                
+                if (!File.Exists(jsonPath))
+                {
+                    this.Hide(); // Hide settings dialog before showing result
+                    await ShowMessageDialog("Backup Failed", "The source shortcuts.json file was not found.");
+                    return;
+                }
+
+                string backupsDir = Path.Combine(baseDir, "backups");
+                if (!Directory.Exists(backupsDir))
+                {
+                    Directory.CreateDirectory(backupsDir);
+                }
+
+                string timestamp = DateTime.Now.ToString("yyMMdd-HHmmss");
+                string backupFileName = $"shortcuts-{timestamp}.json.bak";
+                string backupPath = Path.Combine(backupsDir, backupFileName);
+
+                File.Copy(jsonPath, backupPath, true);
+                
+                Log.Information("Backup created successfully: {BackupPath}", backupPath);
+                
+                this.Hide(); // Hide settings dialog before showing result
+                await ShowMessageDialog("Backup Successful", $"Shortcuts backed up to:\n{backupFileName}");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error creating backup");
+                this.Hide(); // Hide settings dialog before showing error
+                await ShowMessageDialog("Backup Error", $"An error occurred: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Displays a simple message dialog to the user.
+        /// </summary>
+        /// <param name="title">The title of the dialog.</param>
+        /// <param name="content">The message content to display.</param>
+        private async Task ShowMessageDialog(string title, string content)
+        {
+            ContentDialog dialog = new ContentDialog
+            {
+                Title = title,
+                Content = content,
+                CloseButtonText = "OK",
+                XamlRoot = this.XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
     }
 }
