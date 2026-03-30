@@ -55,7 +55,8 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - **Intelligent Toggling:** Clicking the tray icon brings the window to the absolute front if it's minimized or behind other windows, otherwise it toggles visibility.
 - **⚡ Admin Support:** Option to launch specific applications with administrative privileges.
 - **📏 Dynamic Sizing & Positioning:** 
-  - **Customizable Window Scaling:** Control the application's width and initial vertical position via `_appWidthLogical` and `_appTopMarginMultiplier` variables.
+  - **Customizable Window Scaling:** Control the application's width and initial vertical position via the **Display Preferences** dialog.
+  - **Interactive Scaling:** Real-time font size adjustments for the Search Box and Group Headers.
   - **Monitor Switching:** "Move to next monitor" feature in the main context menu allows for seamless transitions between multiple displays, centering the application on each monitor.
   - **Dynamic Visibility:** The monitor move option automatically adapts its visibility based on the current number of detected displays, even if they are connected after the app is launched.
   - The window automatically adjusts its height based on the number of shortcuts and expanded groups.

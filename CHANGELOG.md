@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-03-30
+
+### Added
+- **Display Preferences Dialog**: New interactive dialog to customize UI metrics without modifying source code.
+- **Dynamic UI Scaling**: Real-time adjustment of Search Box and Group Header font sizes via data binding.
+- **Persistent Preferences**: Externalized display settings to `display_settings.json` for persistent user customization across sessions.
+- **Fine-tuned Layout Control**: User-adjustable logical width, vertical margin, and minimum height multipliers.
+
+### Fixed
+- **Build Configuration**: Reverted experimental single-file publishing changes to maintain standard WinUI 3 deployment model.
+
 ## [1.1.0] - 2026-03-30
 
 ### Added

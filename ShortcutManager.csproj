@@ -20,8 +20,6 @@
 	<ApplicationDisplayVersion>1.1.0</ApplicationDisplayVersion>
 	<ApplicationVersion>1.1.0.0</ApplicationVersion>
 	<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-	<SelfContained>true</SelfContained>
-	<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 	  
 	<AppxPackage>false</AppxPackage>
 	<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>

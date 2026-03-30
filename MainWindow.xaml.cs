@@ -215,16 +215,26 @@ namespace ShortcutManager
         private AppWindow _appWindow;
         
         // Window calculation settings
-        private double _appMinHeightMultiplier = 0.50; // Minimum window height as percentage of screen height
-        private int _appWidthLogical = 1080;          // Fixed logical width of the application
-        private double _appTopMarginMultiplier = 0.30; // Vertical position as percentage of screen height from the top
+        public DisplaySettings AppSettings { get; private set; } = new DisplaySettings();
 
-        // Path to the configuration file
+        // Paths to configuration files
         private string shortcutFile = Path.Combine(AppContext.BaseDirectory, "shortcuts.json");
+        private string settingsFile = Path.Combine(AppContext.BaseDirectory, "display_settings.json");
 
         public MainWindow(bool startHidden = false)
         {
+            LoadSettings();
             InitializeComponent();
+
+            // Handle settings changes to refresh UI immediately where needed
+            AppSettings.PropertyChanged += (s, e) => {
+                if (e.PropertyName == nameof(DisplaySettings.AppWidthLogical) || 
+                    e.PropertyName == nameof(DisplaySettings.AppMinHeightMultiplier) ||
+                    e.PropertyName == nameof(DisplaySettings.AppTopMarginMultiplier))
+                {
+                    this.DispatcherQueue.TryEnqueue(() => UpdateWindowSize());
+                }
+            };
 
             // Set up borderless window using custom title bar and Win32 styles
             // Standard WinUI 3 windows often draw a 1px white border that cannot be removed via XAML or AppWindow.
@@ -263,10 +273,10 @@ namespace ShortcutManager
                     // Use a safe default scale if XamlRoot isn't available yet
                     double scale = this.Content?.XamlRoot?.RasterizationScale ?? 1.0;
                     var workArea = displayArea.WorkArea;
-                    int widthPhysical = (int)(_appWidthLogical * scale);
-                    int minHeightPhysical = (int)(workArea.Height * _appMinHeightMultiplier);
+                    int widthPhysical = (int)(AppSettings.AppWidthLogical * scale);
+                    int minHeightPhysical = (int)(workArea.Height * AppSettings.AppMinHeightMultiplier);
                     int x = workArea.X + (workArea.Width - widthPhysical) / 2;
-                    int y = workArea.Y + (int)(workArea.Height * _appTopMarginMultiplier); 
+                    int y = workArea.Y + (int)(workArea.Height * AppSettings.AppTopMarginMultiplier); 
                     _appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, widthPhysical, minHeightPhysical));
                 }
 
@@ -282,10 +292,12 @@ namespace ShortcutManager
             LoadShortcuts();
             GroupsList.ItemsSource = MyGroups;
             
-            // Adjust window size after initial layout, only if not starting hidden
-            if (!startHidden)
+            // Adjust window size after initial layout when content is ready
+            if (this.Content is FrameworkElement root)
             {
-                this.DispatcherQueue.TryEnqueue(() => UpdateWindowSize());
+                root.Loaded += (s, e) => {
+                    UpdateWindowSize();
+                };
             }
 
             // Auto-clear selection when the app loses focus
@@ -467,7 +479,7 @@ namespace ShortcutManager
                 double scale = this.Content.XamlRoot.RasterizationScale;
                 
                 // Use fixed logical width
-                double logicalWidth = _appWidthLogical;
+                double logicalWidth = AppSettings.AppWidthLogical;
                 root.Measure(new Windows.Foundation.Size(logicalWidth, double.PositiveInfinity));
                 double desiredHeightLogical = root.DesiredSize.Height;
                 
@@ -481,12 +493,12 @@ namespace ShortcutManager
                     var workArea = displayArea.WorkArea; // Physical pixels
                     
                     // Use multiplier for vertical position
-                    int newY = workArea.Y + (int)(workArea.Height * _appTopMarginMultiplier);
+                    int newY = workArea.Y + (int)(workArea.Height * AppSettings.AppTopMarginMultiplier);
                     
                     // Ensure width doesn't exceed work area
                     widthPhysical = Math.Min(widthPhysical, workArea.Width);
                     
-                    int minHeightPhysical = (int)(workArea.Height * _appMinHeightMultiplier);
+                    int minHeightPhysical = (int)(workArea.Height * AppSettings.AppMinHeightMultiplier);
                     int maxHeightPhysical = workArea.Height - (newY - workArea.Y) - (int)(20 * scale); 
                     
                     int newHeightPhysical = Math.Max(minHeightPhysical, desiredHeightPhysical);
@@ -704,7 +716,7 @@ namespace ShortcutManager
             catch { }
 
             // Dynamic fallback based on current logical width
-            return Math.Max(1, (int)((_appWidthLogical - 40) / 125));
+            return Math.Max(1, (int)((AppSettings.AppWidthLogical - 40) / 125));
         }
 
         private async void OnShortcutDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -1647,17 +1659,72 @@ namespace ShortcutManager
 
             double scale = this.Content.XamlRoot?.RasterizationScale ?? 1.0;
             var workArea = nextDisplay.WorkArea;
-            int widthPhysical = (int)(_appWidthLogical * scale); 
-            int heightPhysical = (int)(workArea.Height * _appMinHeightMultiplier);
+            int widthPhysical = (int)(AppSettings.AppWidthLogical * scale); 
+            int heightPhysical = (int)(workArea.Height * AppSettings.AppMinHeightMultiplier);
             
             // Center horizontally on the next monitor, keep slightly above center vertically
             int x = workArea.X + (workArea.Width - widthPhysical) / 2;
-            int y = workArea.Y + (int)(workArea.Height * _appTopMarginMultiplier); 
+            int y = workArea.Y + (int)(workArea.Height * AppSettings.AppTopMarginMultiplier); 
             
             _appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, widthPhysical, heightPhysical));
 
             // Force update window size for the new monitor's constraints
             this.DispatcherQueue.TryEnqueue(() => UpdateWindowSize());
+        }
+
+        /// <summary>
+        /// Loads display preferences from the external settings file.
+        /// </summary>
+        private void LoadSettings()
+        {
+            try
+            {
+                if (File.Exists(settingsFile))
+                {
+                    string json = File.ReadAllText(settingsFile);
+                    if (!string.IsNullOrWhiteSpace(json))
+                    {
+                        var settings = JsonSerializer.Deserialize(json, ShortcutSerializationContext.Default.DisplaySettings);
+                        if (settings != null)
+                        {
+                            AppSettings = settings;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Could not load display settings; using defaults.");
+            }
+        }
+
+        /// <summary>
+        /// Persists display preferences to the external settings file.
+        /// </summary>
+        private void SaveSettings()
+        {
+            try
+            {
+                string json = JsonSerializer.Serialize(AppSettings, ShortcutSerializationContext.Default.DisplaySettings);
+                File.WriteAllText(settingsFile, json);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error saving display settings");
+            }
+        }
+
+        private async void MenuDisplayPreferences_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new DisplaySettingsDialog(AppSettings);
+            dialog.XamlRoot = this.Content.XamlRoot;
+
+            var result = await ShowDialogAsync(dialog);
+            if (result == ContentDialogResult.Primary)
+            {
+                SaveSettings();
+                // Settings PropertyChanged events will trigger UpdateWindowSize
+            }
         }
 
         private async void MenuExit_Click(object sender, RoutedEventArgs e)

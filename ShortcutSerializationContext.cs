@@ -11,6 +11,7 @@ namespace ShortcutManager
     [JsonSerializable(typeof(List<ShortcutGroup>))]
     [JsonSerializable(typeof(ShortcutGroup))]
     [JsonSerializable(typeof(ShortcutItem))]
+    [JsonSerializable(typeof(DisplaySettings))]
     internal partial class ShortcutSerializationContext : JsonSerializerContext
     {
     }
