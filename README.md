@@ -46,7 +46,7 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 - **🎹 Keyboard & Mouse Friendly:** 
   - `Double-Click`: Launch a shortcut.
   - `Enter`: Launch the currently highlighted shortcut.
-  - `Delete`: Remove the currently highlighted shortcut (prompts for confirmation).
+  - `Delete`: Remove the currently highlighted shortcut. **Intelligent Safety:** Automatically disabled when any dialog or flyout is active to prevent accidental deletions.
   - `Esc`: Clear selection, clear search, or hide the window.
   - `Right-Click`: Access comprehensive context menus for shortcuts, groups, and the application background.
   - **Reload:** Quickly refresh the application state from `shortcuts.json` via the context menu.
@@ -55,6 +55,10 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
     - `F1 - F5`: Toggle expansion of the first 5 shortcut groups.
     - `Alt + 1 - 5`: Quick-launch the first 5 items (from search results or the active group).
     - `a - z`: Focus search box and start typing.
+- **🛡️ Dialog & Task Safety:**
+  - **Serializing Dialogs:** Implements a `SemaphoreSlim` to safely manage multiple dialog requests, preventing WinUI 3 "Single Dialog" crashes.
+  - **Non-Disruptive Settings:** Destructive actions in Settings now use **Modern Flyout Confirmations** with headers and caution icons, eliminating the distracting "hide/show" dialog pattern.
+  - **InfoBar Feedback:** Real-time status updates (Success/Error) are shown via an in-place `InfoBar` within the Settings dialog for a smoother workflow.
 - **🛠️ Self-Healing Configuration:**
   - **Auto-Initialization:** Automatically generates a "Default" group if `shortcuts.json` is missing or empty.
   - **Path Validation:** Automatically verifies file/directory existence before performing any action.

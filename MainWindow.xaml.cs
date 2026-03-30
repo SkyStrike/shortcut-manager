@@ -19,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
@@ -201,6 +202,14 @@ namespace ShortcutManager
         
         // Flag to prevent recursive state saving during bulk UI updates
         private bool _isUpdatingStates = false;
+        
+        // Flag to prevent multiple dialogs or flyouts from being opened concurrently.
+        // This is used to disable keyboard shortcuts (like Delete) while a dialog is active.
+        private bool _isDialogOpen = false;
+
+        // Semaphore to serialize dialog requests. WinUI 3 only allows one ContentDialog 
+        // to be open at a time. This ensures sequential display and prevents COMException.
+        private readonly SemaphoreSlim _dialogSemaphore = new SemaphoreSlim(1, 1);
         
         private AppWindow _appWindow;
         
@@ -755,7 +764,7 @@ namespace ShortcutManager
                 XamlRoot = this.Content.XamlRoot
             };
 
-            var result = await confirmDialog.ShowAsync();
+            var result = await ShowDialogAsync(confirmDialog);
             if (result == ContentDialogResult.Primary)
             {
                 RemoveShortcutInternal(item);
@@ -792,6 +801,30 @@ namespace ShortcutManager
 
             SaveStates();
             UpdateWindowSize();
+        }
+
+        /// <summary>
+        /// Safely shows a ContentDialog by ensuring only one can be open at a time.
+        /// Serializes requests using a semaphore to allow nested/sequential dialogs.
+        /// </summary>
+        public async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
+        {
+            await _dialogSemaphore.WaitAsync();
+            _isDialogOpen = true;
+            try
+            {
+                return await dialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error showing dialog");
+                return ContentDialogResult.None;
+            }
+            finally
+            {
+                _isDialogOpen = false;
+                _dialogSemaphore.Release();
+            }
         }
 
         private void MenuRegenerateIcon_Click(object sender, RoutedEventArgs e)
@@ -853,7 +886,7 @@ namespace ShortcutManager
             var dialog = new PropertiesDialog(item);
             dialog.XamlRoot = this.Content.XamlRoot;
 
-            var result = await dialog.ShowAsync();
+            var result = await ShowDialogAsync(dialog);
             if (result == ContentDialogResult.Primary)
             {
                 // Refresh icon in case path or name changed
@@ -880,7 +913,7 @@ namespace ShortcutManager
                     XamlRoot = this.Content.XamlRoot
                 };
 
-                var result = await dialog.ShowAsync();
+                var result = await ShowDialogAsync(dialog);
                 if (result == ContentDialogResult.Primary)
                 {
                     RemoveShortcutInternal(item);
@@ -1238,7 +1271,7 @@ namespace ShortcutManager
                         XamlRoot = this.Content.XamlRoot
                     };
 
-                    var result = await confirmDialog.ShowAsync();
+                    var result = await ShowDialogAsync(confirmDialog);
                     if (result != ContentDialogResult.Primary) return;
                 }
 
@@ -1314,7 +1347,7 @@ namespace ShortcutManager
             var dialog = new InputDialog("New Group", "Enter the name for the new group:");
             dialog.XamlRoot = this.Content.XamlRoot;
 
-            var result = await dialog.ShowAsync();
+            var result = await ShowDialogAsync(dialog);
             if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.InputText))
             {
                 var newGroup = new ShortcutGroup { GroupName = dialog.InputText, IsExpanded = true };
@@ -1333,7 +1366,7 @@ namespace ShortcutManager
         {
             var dialog = new SettingsDialog(this);
             dialog.XamlRoot = this.Content.XamlRoot;
-            await dialog.ShowAsync();
+            await ShowDialogAsync(dialog);
         }
 
         private void MenuHide_Click(object sender, RoutedEventArgs e)
@@ -1341,140 +1374,155 @@ namespace ShortcutManager
             this.AppWindow.Hide();
         }
 
-        public async Task RegenerateAllIcons()
+        /// <summary>
+        /// Regenerates all shortcut icons.
+        /// </summary>
+        /// <param name="askConfirmation">If true, shows a confirmation dialog before proceeding.</param>
+        public async Task RegenerateAllIcons(bool askConfirmation = true)
         {
-            ContentDialog confirmDialog = new ContentDialog
+            if (askConfirmation)
             {
-                Title = "Regenerate All Icons",
-                Content = "This will refresh icons for all shortcuts in all groups. Any manually customized icons will be lost. Do you want to proceed?",
-                PrimaryButtonText = "Regenerate",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot
-            };
-
-            var result = await confirmDialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
-            {
-                foreach (var group in MyGroups)
+                ContentDialog confirmDialog = new ContentDialog
                 {
-                    if (group == _searchResultGroup) continue;
+                    Title = "Regenerate All Icons",
+                    Content = "This will refresh icons for all shortcuts in all groups. Any manually customized icons will be lost. Do you want to proceed?",
+                    PrimaryButtonText = "Regenerate",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.Content.XamlRoot
+                };
 
-                    foreach (var item in group.Shortcuts)
-                    {
-                        ExtractAndSaveIcon(item, force: true);
-                    }
-                }
-                SaveStates();
+                var result = await ShowDialogAsync(confirmDialog);
+                if (result != ContentDialogResult.Primary) return;
             }
+
+            foreach (var group in MyGroups)
+            {
+                if (group == _searchResultGroup) continue;
+
+                foreach (var item in group.Shortcuts)
+                {
+                    ExtractAndSaveIcon(item, force: true);
+                }
+            }
+            SaveStates();
         }
 
-        public async Task CleanUpUnusedIcons()
+        /// <summary>
+        /// Deletes cached icons that are no longer referenced by any shortcut.
+        /// </summary>
+        /// <param name="askConfirmation">If true, shows a confirmation dialog before proceeding.</param>
+        public async Task CleanUpUnusedIcons(bool askConfirmation = true)
         {
-            ContentDialog confirmDialog = new ContentDialog
+            if (askConfirmation)
             {
-                Title = "Clean Up Icons",
-                Content = "This will delete all cached icons that are not currently used by any of your shortcuts. Do you want to proceed?",
-                PrimaryButtonText = "Clean Up",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot
-            };
-
-            var result = await confirmDialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
-            {
-                try
+                ContentDialog confirmDialog = new ContentDialog
                 {
-                    string iconsDir = Path.Combine(AppContext.BaseDirectory, "icons");
-                    if (!Directory.Exists(iconsDir)) return;
+                    Title = "Clean Up Icons",
+                    Content = "This will delete all cached icons that are not currently used by any of your shortcuts. Do you want to proceed?",
+                    PrimaryButtonText = "Clean Up",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.Content.XamlRoot
+                };
 
-                    // Get all icons currently in use
-                    var usedIcons = MyGroups
-                        .Where(g => g.GroupName != "Search Result")
-                        .SelectMany(g => g.Shortcuts)
-                        .Select(s => Path.GetFileName(s.Icon))
-                        .Where(name => !string.IsNullOrEmpty(name))
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var result = await ShowDialogAsync(confirmDialog);
+                if (result != ContentDialogResult.Primary) return;
+            }
 
-                    // Get all files in the icons directory
-                    var allIconFiles = Directory.GetFiles(iconsDir);
-                    int deletedCount = 0;
+            try
+            {
+                string iconsDir = Path.Combine(AppContext.BaseDirectory, "icons");
+                if (!Directory.Exists(iconsDir)) return;
 
-                    foreach (var file in allIconFiles)
+                // Get all icons currently in use
+                var usedIcons = MyGroups
+                    .Where(g => g.GroupName != "Search Result")
+                    .SelectMany(g => g.Shortcuts)
+                    .Select(s => Path.GetFileName(s.Icon))
+                    .Where(name => !string.IsNullOrEmpty(name))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                // Get all files in the icons directory
+                var allIconFiles = Directory.GetFiles(iconsDir);
+                int deletedCount = 0;
+
+                foreach (var file in allIconFiles)
+                {
+                    string fileName = Path.GetFileName(file);
+                    if (!usedIcons.Contains(fileName))
                     {
-                        string fileName = Path.GetFileName(file);
-                        if (!usedIcons.Contains(fileName))
+                        try
                         {
-                            try
-                            {
-                                File.Delete(file);
-                                deletedCount++;
-                            }
-                            catch (Exception ex)
-                            {
-                                Log.Warning(ex, "Could not delete unused icon file: {File}", file);
-                            }
+                            File.Delete(file);
+                            deletedCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "Could not delete unused icon file: {File}", file);
                         }
                     }
+                }
 
-                    Log.Information("Cleaned up {Count} unused icon files.", deletedCount);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error during icon cleanup");
-                }
+                Log.Information("Cleaned up {Count} unused icon files.", deletedCount);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error during icon cleanup");
             }
         }
 
         /// <summary>
-        /// Scans all shortcuts and removes those with invalid/non-existent paths after confirmation.
+        /// Scans all shortcuts and removes those with invalid/non-existent paths.
         /// </summary>
-        public async Task CleanUpInvalidShortcuts()
+        /// <param name="askConfirmation">If true, shows a confirmation dialog before proceeding.</param>
+        public async Task CleanUpInvalidShortcuts(bool askConfirmation = true)
         {
-            ContentDialog confirmDialog = new ContentDialog
+            if (askConfirmation)
             {
-                Title = "Remove Invalid Shortcuts",
-                Content = "This will scan all groups and remove shortcuts that point to files or directories that no longer exist. Do you want to proceed?",
-                PrimaryButtonText = "Remove Invalid",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot
-            };
-
-            var result = await confirmDialog.ShowAsync();
-            if (result == ContentDialogResult.Primary)
-            {
-                try
+                ContentDialog confirmDialog = new ContentDialog
                 {
-                    int removedCount = 0;
-                    // We iterate backwards to allow safe removal while looping
-                    foreach (var group in MyGroups)
-                    {
-                        if (group == _searchResultGroup) continue;
+                    Title = "Remove Invalid Shortcuts",
+                    Content = "This will scan all groups and remove shortcuts that point to files or directories that no longer exist. Do you want to proceed?",
+                    PrimaryButtonText = "Remove Invalid",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.Content.XamlRoot
+                };
 
-                        for (int i = group.Shortcuts.Count - 1; i >= 0; i--)
+                var result = await ShowDialogAsync(confirmDialog);
+                if (result != ContentDialogResult.Primary) return;
+            }
+
+            try
+            {
+                int removedCount = 0;
+                // We iterate backwards to allow safe removal while looping
+                foreach (var group in MyGroups)
+                {
+                    if (group == _searchResultGroup) continue;
+
+                    for (int i = group.Shortcuts.Count - 1; i >= 0; i--)
+                    {
+                        var item = group.Shortcuts[i];
+                        if (string.IsNullOrEmpty(item.Path) || (!File.Exists(item.Path) && !Directory.Exists(item.Path)))
                         {
-                            var item = group.Shortcuts[i];
-                            if (string.IsNullOrEmpty(item.Path) || (!File.Exists(item.Path) && !Directory.Exists(item.Path)))
-                            {
-                                group.Shortcuts.RemoveAt(i);
-                                removedCount++;
-                            }
+                            group.Shortcuts.RemoveAt(i);
+                            removedCount++;
                         }
                     }
+                }
 
-                    if (removedCount > 0)
-                    {
-                        SaveStates();
-                        UpdateWindowSize();
-                        Log.Information("Cleaned up {Count} invalid shortcuts.", removedCount);
-                    }
-                }
-                catch (Exception ex)
+                if (removedCount > 0)
                 {
-                    Log.Error(ex, "Error during invalid shortcut cleanup");
+                    SaveStates();
+                    UpdateWindowSize();
+                    Log.Information("Cleaned up {Count} invalid shortcuts.", removedCount);
                 }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error during invalid shortcut cleanup");
             }
         }
 
@@ -1490,7 +1538,7 @@ namespace ShortcutManager
                 XamlRoot = this.Content.XamlRoot
             };
 
-            var result = await exitDialog.ShowAsync();
+            var result = await ShowDialogAsync(exitDialog);
             if (result == ContentDialogResult.Primary)
             {
                 this.Close();
@@ -1506,7 +1554,7 @@ namespace ShortcutManager
                 var dialog = new InputDialog("Rename Group", "Enter the new name for the group:", group.GroupName);
                 dialog.XamlRoot = this.Content.XamlRoot;
 
-                var result = await dialog.ShowAsync();
+                var result = await ShowDialogAsync(dialog);
                 if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.InputText))
                 {
                     group.GroupName = dialog.InputText;
@@ -1531,7 +1579,7 @@ namespace ShortcutManager
                     XamlRoot = this.Content.XamlRoot
                 };
 
-                var result = await deleteDialog.ShowAsync();
+                var result = await ShowDialogAsync(deleteDialog);
                 if (result == ContentDialogResult.Primary)
                 {
                     MyGroups.Remove(group);
@@ -1802,6 +1850,8 @@ namespace ShortcutManager
         /// </summary>
         private async void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
         {
+            if (_isDialogOpen) return;
+
             if (e.Key == Windows.System.VirtualKey.Escape)
             {
                 ClearOrHideApp();

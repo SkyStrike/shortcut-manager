@@ -232,29 +232,32 @@ namespace ShortcutManager
             }
         }
 
-        private async void RegenerateAllIcons_Click(object sender, RoutedEventArgs e)
+        private async void RegenerateAllIcons_ConfirmClick(object sender, RoutedEventArgs e)
         {
-            // Close the current settings dialog to allow the confirmation dialog to show clearly
-            this.Hide();
-            await _mainWindow.RegenerateAllIcons();
+            RegenerateFlyout.Hide();
+            // Call the shared method in MainWindow without its own confirmation dialog
+            await _mainWindow.RegenerateAllIcons(askConfirmation: false);
+            ShowStatusMessage("Success", "All icons have been regenerated.", InfoBarSeverity.Success);
         }
 
-        private async void CleanUpIcons_Click(object sender, RoutedEventArgs e)
+        private async void CleanUpIcons_ConfirmClick(object sender, RoutedEventArgs e)
         {
-            this.Hide();
-            await _mainWindow.CleanUpUnusedIcons();
+            CleanUpIconsFlyout.Hide();
+            await _mainWindow.CleanUpUnusedIcons(askConfirmation: false);
+            ShowStatusMessage("Success", "Unused icons have been cleaned up.", InfoBarSeverity.Success);
         }
 
-        private async void RemoveInvalidShortcuts_Click(object sender, RoutedEventArgs e)
+        private async void RemoveInvalidShortcuts_ConfirmClick(object sender, RoutedEventArgs e)
         {
-            this.Hide();
-            await _mainWindow.CleanUpInvalidShortcuts();
+            RemoveInvalidFlyout.Hide();
+            await _mainWindow.CleanUpInvalidShortcuts(askConfirmation: false);
+            ShowStatusMessage("Success", "Invalid shortcuts have been removed.", InfoBarSeverity.Success);
         }
 
         /// <summary>
         /// Creates a backup of the shortcuts.json file in a dedicated backups directory.
         /// </summary>
-        private async void CreateBackup_Click(object sender, RoutedEventArgs e)
+        private void CreateBackup_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -263,8 +266,7 @@ namespace ShortcutManager
                 
                 if (!File.Exists(jsonPath))
                 {
-                    this.Hide(); // Hide settings dialog before showing result
-                    await ShowMessageDialog("Backup Failed", "The source shortcuts.json file was not found.");
+                    ShowStatusMessage("Backup Failed", "The source shortcuts.json file was not found.", InfoBarSeverity.Error);
                     return;
                 }
 
@@ -282,32 +284,54 @@ namespace ShortcutManager
                 
                 Log.Information("Backup created successfully: {BackupPath}", backupPath);
                 
-                this.Hide(); // Hide settings dialog before showing result
-                await ShowMessageDialog("Backup Successful", $"Shortcuts backed up to:\n{backupFileName}");
+                ShowStatusMessage("Backup Successful", $"Shortcuts backed up to:\n{backupFileName}", InfoBarSeverity.Success);
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error creating backup");
-                this.Hide(); // Hide settings dialog before showing error
-                await ShowMessageDialog("Backup Error", $"An error occurred: {ex.Message}");
+                ShowStatusMessage("Backup Error", $"An error occurred: {ex.Message}", InfoBarSeverity.Error);
+            }
+        }
+
+        /// <summary>
+        /// Displays a status message using the in-place InfoBar.
+        /// </summary>
+        private void ShowStatusMessage(string title, string content, InfoBarSeverity severity)
+        {
+            StatusInfoBar.Title = title;
+            StatusInfoBar.Message = content;
+            StatusInfoBar.Severity = severity;
+            StatusInfoBar.IsOpen = true;
+        }
+
+        /// <summary>
+        /// Closes the parent flyout when the Cancel button is clicked.
+        /// </summary>
+        private void Cancel_Click(object sender, RoutedEventArgs e)
+        {
+            // Close any open flyout by hiding it via its parent button or just letting it light-dismiss.
+            // In WinUI 3, we can find the parent Flyout from the button.
+            if (sender is Button btn && btn.Parent is StackPanel panel && panel.Parent is Flyout flyout)
+            {
+                flyout.Hide();
+            }
+            else if (sender is Button btn2)
+            {
+                // Fallback for different nesting
+                RegenerateFlyout.Hide();
+                CleanUpIconsFlyout.Hide();
+                RemoveInvalidFlyout.Hide();
             }
         }
 
         /// <summary>
         /// Displays a simple message dialog to the user.
         /// </summary>
-        /// <param name="title">The title of the dialog.</param>
-        /// <param name="content">The message content to display.</param>
         private async Task ShowMessageDialog(string title, string content)
         {
-            ContentDialog dialog = new ContentDialog
-            {
-                Title = title,
-                Content = content,
-                CloseButtonText = "OK",
-                XamlRoot = this.XamlRoot
-            };
-            await dialog.ShowAsync();
+            // Legacy method fallback, now using InfoBar for less disruption
+            ShowStatusMessage(title, content, InfoBarSeverity.Informational);
+            await Task.CompletedTask;
         }
     }
 }
