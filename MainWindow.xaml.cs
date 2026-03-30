@@ -213,8 +213,10 @@ namespace ShortcutManager
         
         private AppWindow _appWindow;
         
-        // Window height calculation settings
+        // Window calculation settings
         private double _appMinHeightMultiplier = 0.50;
+        private int _appWidthLogical = 1080;
+        private double _appTopMarginMultiplier = 0.30;
 
         // Path to the configuration file
         private string shortcutFile = Path.Combine(AppContext.BaseDirectory, "shortcuts.json");
@@ -257,12 +259,14 @@ namespace ShortcutManager
                 var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
                 if (displayArea != null)
                 {
+                    // Use a safe default scale if XamlRoot isn't available yet
+                    double scale = this.Content?.XamlRoot?.RasterizationScale ?? 1.0;
                     var workArea = displayArea.WorkArea;
-                    int width = 1600;
-                    int minHeight = (int)(workArea.Height * _appMinHeightMultiplier);
-                    int x = workArea.X + (workArea.Width - width) / 2;
-                    int y = workArea.Y + (workArea.Height - 600) / 2 - 50; 
-                    _appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, width, minHeight));
+                    int widthPhysical = (int)(_appWidthLogical * scale);
+                    int minHeightPhysical = (int)(workArea.Height * _appMinHeightMultiplier);
+                    int x = workArea.X + (workArea.Width - widthPhysical) / 2;
+                    int y = workArea.Y + (int)(workArea.Height * _appTopMarginMultiplier); 
+                    _appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, widthPhysical, minHeightPhysical));
                 }
 
                 if (startHidden)
@@ -285,6 +289,12 @@ namespace ShortcutManager
 
             // Auto-clear selection when the app loses focus
             this.Activated += MainWindow_Activated;
+
+            // Hide "Move to next monitor" if only one monitor is present
+            if (DisplayArea.FindAll().Count <= 1)
+            {
+                MoveToNextMonitorMenuItem.Visibility = Visibility.Collapsed;
+            }
 
             this.Closed += (s, e) => {
                 if (MyTrayIcon != null)
@@ -453,29 +463,49 @@ namespace ShortcutManager
 
         /// <summary>
         /// Adjusts the window height dynamically based on the content height and screen constraints.
+        /// Accounts for DPI scaling (physical vs logical pixels).
         /// </summary>
         private void UpdateWindowSize()
         {
-            if (this.Content is FrameworkElement root && _appWindow != null)
+            if (this.Content is FrameworkElement root && _appWindow != null && this.Content.XamlRoot != null)
             {
-                root.Measure(new Windows.Foundation.Size(_appWindow.Size.Width, double.PositiveInfinity));
-                double desiredHeight = root.DesiredSize.Height;
+                double scale = this.Content.XamlRoot.RasterizationScale;
+                
+                // Use fixed logical width
+                double logicalWidth = _appWidthLogical;
+                root.Measure(new Windows.Foundation.Size(logicalWidth, double.PositiveInfinity));
+                double desiredHeightLogical = root.DesiredSize.Height;
+                
+                // Convert to physical pixels
+                int widthPhysical = (int)(logicalWidth * scale);
+                int desiredHeightPhysical = (int)((desiredHeightLogical + 10) * scale);
 
                 var displayArea = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
                 if (displayArea != null)
                 {
-                    var workArea = displayArea.WorkArea;
-                    int currentY = _appWindow.Position.Y;
+                    var workArea = displayArea.WorkArea; // Physical pixels
                     
-                    int minHeight = (int)(workArea.Height * _appMinHeightMultiplier);
-                    int maxHeight = workArea.Height - (currentY - workArea.Y) - 20; 
+                    // Use multiplier for vertical position
+                    int newY = workArea.Y + (int)(workArea.Height * _appTopMarginMultiplier);
                     
-                    int newHeight = Math.Max(minHeight, (int)desiredHeight + 10);
-                    newHeight = Math.Min(newHeight, maxHeight);
+                    // Ensure width doesn't exceed work area
+                    widthPhysical = Math.Min(widthPhysical, workArea.Width);
                     
-                    if (newHeight != _appWindow.Size.Height)
+                    int minHeightPhysical = (int)(workArea.Height * _appMinHeightMultiplier);
+                    int maxHeightPhysical = workArea.Height - (newY - workArea.Y) - (int)(20 * scale); 
+                    
+                    int newHeightPhysical = Math.Max(minHeightPhysical, desiredHeightPhysical);
+                    newHeightPhysical = Math.Min(newHeightPhysical, maxHeightPhysical);
+                    
+                    // Recalculate X for horizontal centering
+                    int newX = workArea.X + (workArea.Width - widthPhysical) / 2;
+                    
+                    if (Math.Abs(newHeightPhysical - _appWindow.Size.Height) > 1 || 
+                        Math.Abs(widthPhysical - _appWindow.Size.Width) > 1 ||
+                        Math.Abs(newX - _appWindow.Position.X) > 1 ||
+                        Math.Abs(newY - _appWindow.Position.Y) > 1)
                     {
-                        _appWindow.Resize(new Windows.Graphics.SizeInt32(_appWindow.Size.Width, newHeight));
+                        _appWindow.MoveAndResize(new Windows.Graphics.RectInt32(newX, newY, widthPhysical, newHeightPhysical));
                     }
                 }
             }
@@ -669,16 +699,17 @@ namespace ShortcutManager
                     var scrollViewer = rootGrid.Children.OfType<ScrollViewer>().FirstOrDefault();
                     if (scrollViewer != null && scrollViewer.ViewportWidth > 0)
                     {
-                        // Width: 110 (min item) + 5 (column spacing). Padding: ~40px.
+                        // Width: 120 (min item) + 5 (column spacing). Padding: ~40px.
                         double availableWidth = scrollViewer.ViewportWidth - 40; 
-                        int count = (int)(availableWidth / 115);
+                        int count = (int)(availableWidth / 125);
                         return Math.Max(1, count);
                     }
                 }
             }
             catch { }
 
-            return 13; // Default fallback for 1600px width
+            // Dynamic fallback based on current logical width
+            return Math.Max(1, (int)((_appWidthLogical - 40) / 125));
         }
 
         private async void OnShortcutDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
@@ -1524,6 +1555,38 @@ namespace ShortcutManager
             {
                 Log.Error(ex, "Error during invalid shortcut cleanup");
             }
+        }
+
+        private void MenuMoveToNextMonitor_Click(object sender, RoutedEventArgs e)
+        {
+            var allDisplays = DisplayArea.FindAll();
+            var displaysList = new List<DisplayArea>();
+            for (int i = 0; i < allDisplays.Count; i++)
+            {
+                displaysList.Add(allDisplays[i]);
+            }
+            
+            var displays = displaysList.OrderBy(d => d.OuterBounds.X).ToList();
+            if (displays.Count <= 1) return;
+
+            var currentDisplay = DisplayArea.GetFromWindowId(_appWindow.Id, DisplayAreaFallback.Primary);
+            int currentIndex = displays.FindIndex(d => d.DisplayId.Value == currentDisplay.DisplayId.Value);
+            int nextIndex = (currentIndex + 1) % displays.Count;
+            var nextDisplay = displays[nextIndex];
+
+            double scale = this.Content.XamlRoot?.RasterizationScale ?? 1.0;
+            var workArea = nextDisplay.WorkArea;
+            int widthPhysical = (int)(_appWidthLogical * scale); 
+            int heightPhysical = (int)(workArea.Height * _appMinHeightMultiplier);
+            
+            // Center horizontally on the next monitor, keep slightly above center vertically
+            int x = workArea.X + (workArea.Width - widthPhysical) / 2;
+            int y = workArea.Y + (int)(workArea.Height * _appTopMarginMultiplier); 
+            
+            _appWindow.MoveAndResize(new Windows.Graphics.RectInt32(x, y, widthPhysical, heightPhysical));
+
+            // Force update window size for the new monitor's constraints
+            this.DispatcherQueue.TryEnqueue(() => UpdateWindowSize());
         }
 
         private async void MenuExit_Click(object sender, RoutedEventArgs e)

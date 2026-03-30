@@ -39,6 +39,11 @@
                         <FontIcon Glyph="&#xE7D1;" FontFamily="Segoe Fluent Icons" />
                     </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem x:Name="MoveToNextMonitorMenuItem" Text="Move to next monitor" Click="MenuMoveToNextMonitor_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE7AD;" FontFamily="Segoe Fluent Icons" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Exit" Click="MenuExit_Click">
                     <MenuFlyoutItem.Icon>
@@ -75,7 +80,7 @@
                     PlaceholderText="Search shortcuts..."
                     QueryIcon="Find"
                     Margin="10"
-                    FontSize="48"
+                    FontSize="32"
                     TextChanged="SearchBox_TextChanged"
                     QuerySubmitted="SearchBox_QuerySubmitted"
                     Background="{ThemeResource SystemControlAcrylicElementBrush}"/>
