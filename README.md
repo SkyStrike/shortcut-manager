@@ -26,6 +26,8 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 - **🖼️ Smart Icon Cache:** 
   - **High-Quality Extraction:** Uses Win32 `SHGetFileInfo` and `IShellLink` for full-color, 32-bit alpha-transparent icons.
   - **LNK Precision:** Specifically extracts the icon assigned to a `.lnk` file (shortcut), even if it differs from the target's default icon (e.g., for Web Apps).
+  - **Clean Icons:** Automatically removes the shortcut arrow overlay for a cleaner, high-quality look.
+  - **Robust Cleanup:** "Clean Up Unused Icons" feature now cross-references both active memory and the on-disk `shortcuts.json` to safely remove orphaned icons without risking active ones.
   - **Folder Support:** Correctly identifies and displays Windows-associated folder icons.
   - **PNG Storage:** Icons are cached as PNG files to preserve transparency and quality.
 - **🔍 Fast Search:** 
@@ -65,6 +67,7 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - **InfoBar Feedback:** Real-time status updates (Success/Error) are shown via an in-place `InfoBar` within the Settings dialog for a smoother workflow.
 - **🛠️ Self-Healing Configuration:**
   - **Auto-Initialization:** Automatically generates a "Default" group if `shortcuts.json` is missing or empty.
+  - **Persistence:** Ensuring `shortcuts.json` is always correctly synced to the application's base directory for reliable loading.
   - **Path Validation:** Automatically verifies file/directory existence before performing any action.
   - Interactive recovery options: If a path is broken, you can choose to **Remove** the shortcut or **Edit** its properties immediately.
 

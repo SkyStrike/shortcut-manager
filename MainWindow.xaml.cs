@@ -1492,13 +1492,48 @@ namespace ShortcutManager
                 string iconsDir = Path.Combine(AppContext.BaseDirectory, "icons");
                 if (!Directory.Exists(iconsDir)) return;
 
-                // Get all icons currently in use
-                var usedIcons = MyGroups
+                // Track all icon filenames that are in use
+                var usedIcons = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                // 1. Check current memory state (MyGroups)
+                foreach (var name in MyGroups
                     .Where(g => g.GroupName != "Search Result")
                     .SelectMany(g => g.Shortcuts)
                     .Select(s => Path.GetFileName(s.Icon))
-                    .Where(name => !string.IsNullOrEmpty(name))
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    .Where(n => !string.IsNullOrEmpty(n)))
+                {
+                    usedIcons.Add(name);
+                }
+
+                // 2. Check disk state (shortcuts.json) to catch anything not currently loaded or in sync
+                try
+                {
+                    string jsonPath = shortcutFile;
+                    if (!File.Exists(jsonPath)) jsonPath = Path.GetFullPath(shortcutFile);
+
+                    if (File.Exists(jsonPath))
+                    {
+                        string json = File.ReadAllText(jsonPath);
+                        if (!string.IsNullOrWhiteSpace(json))
+                        {
+                            var groupsOnDisk = JsonSerializer.Deserialize(json, ShortcutSerializationContext.Default.ListShortcutGroup);
+                            if (groupsOnDisk != null)
+                            {
+                                foreach (var name in groupsOnDisk
+                                    .SelectMany(g => g.Shortcuts)
+                                    .Select(s => Path.GetFileName(s.Icon))
+                                    .Where(n => !string.IsNullOrEmpty(n)))
+                                {
+                                    usedIcons.Add(name);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Could not read shortcuts.json during icon cleanup; proceeding with memory-only check.");
+                }
 
                 // Get all files in the icons directory
                 var allIconFiles = Directory.GetFiles(iconsDir);
