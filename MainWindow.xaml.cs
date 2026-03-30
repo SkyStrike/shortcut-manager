@@ -1828,10 +1828,10 @@ namespace ShortcutManager
 
         private void ClearOrHideApp() {
             ClearSelection();
-            if (!string.IsNullOrEmpty(SidebarSearchBox.Text))
+            if (!string.IsNullOrEmpty(SearchBox.Text))
             {
-                SidebarSearchBox.Text = string.Empty;
-                SidebarSearchBox.Focus(FocusState.Programmatic);
+                SearchBox.Text = string.Empty;
+                SearchBox.Focus(FocusState.Programmatic);
             }
             else
             {
@@ -1874,9 +1874,9 @@ namespace ShortcutManager
                 if (!(focusedElement is TextBox) && 
                     !(focusedElement is PasswordBox) && 
                     !(focusedElement is AutoSuggestBox) &&
-                    !object.ReferenceEquals(focusedElement, SidebarSearchBox))
+                    !object.ReferenceEquals(focusedElement, SearchBox))
                 {
-                    SidebarSearchBox.Focus(FocusState.Keyboard);
+                    SearchBox.Focus(FocusState.Keyboard);
                     // The character will naturally be typed into the focused AutoSuggestBox
                     // as long as we don't mark the event as handled here.
                 }

@@ -3,10 +3,10 @@
 A simple Shortcut Manager that organize and launch your favorite applications, files, and scripts from a searchable search box. 
 
 This is by far **NOT** the most creative app you will ever come across. Most shortcut managers uses search to find the shortcuts you want... This is a behavior which I personally do not like. 
-I just need one that allows me to create my own shortcut groups rather than finding my whole computer for it. Since I wasn't able to find this available in any of the open source projects 20years ago (now too), I made my own.
+I just need one that allows me to create my own shortcut groups rather than finding my whole computer for it. Since I wasn't able to find this available in any of the open source projects 20years ago in 2006 (now too), I made my own.
 
 
-Note that this is still an unfinished product. I'm still trying to migrate the features from the old Desktop Shortcut Manager that was last maintained 15 years ago using Winforms. The main aim is to use modernized UI/frameworks to achieve the same functionality.
+Note that this is still an unfinished product. I'm still trying to migrate the features from the old Desktop Shortcut Manager that was last maintained in 2011 using Winforms. The main aim is to use modernized UI/frameworks to achieve the same functionality.
 
 The old shortcut manager is a side bar that shows/collapses. But this version takes inspiration from Flow launcher for the UI.
 

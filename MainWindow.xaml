@@ -70,11 +70,12 @@
             >
         </tb:TaskbarIcon>
 
-        <AutoSuggestBox x:Name="SidebarSearchBox"
+        <AutoSuggestBox x:Name="SearchBox"
                     Grid.Row="0"
                     PlaceholderText="Search shortcuts..."
                     QueryIcon="Find"
                     Margin="10"
+                    FontSize="48"
                     TextChanged="SearchBox_TextChanged"
                     QuerySubmitted="SearchBox_QuerySubmitted"
                     Background="{ThemeResource SystemControlAcrylicElementBrush}"/>
