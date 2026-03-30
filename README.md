@@ -2,6 +2,16 @@
 
 A simple Shortcut Manager that organize and launch your favorite applications, files, and scripts from a searchable search box. 
 
+## 🚀 TL;DR (Quick Start)
+If you just want to use the app without building from source:
+1.  **Download**: Get the latest `ShortcutManager_vX.X.X_x64.zip` from the [Releases](https://github.com/SkyStrike/shortcut-manager/releases) page.
+2.  **Extract**: Unzip the folder to a location of your choice (e.g., `C:\Tools\ShortcutManager`).
+3.  **Run**: Launch `ShortcutManager.exe`.
+4.  **Tray**: Look for the star icon in your system tray to toggle the window.
+5.  **Setup**: Drag and drop your favorite `.exe`, folders, or `.lnk` files directly onto the app to start building your groups.
+
+---
+
 This is by far **NOT** the most creative app you will ever come across. Most shortcut managers uses search to find the shortcuts you want... This is a behavior which I personally do not like. 
 I just need one that allows me to create my own shortcut groups rather than finding my whole computer for it. Since I wasn't able to find this available in any of the open source projects 20years ago in 2006 (now too), I made my own.
 
