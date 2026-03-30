@@ -17,7 +17,7 @@
 
     <Grid Background="Transparent" PointerPressed="RootGrid_PointerPressed" ToolTipService.ToolTip="" PreviewKeyDown="RootGrid_PreviewKeyDown">
         <Grid.ContextFlyout>
-            <MenuFlyout>
+            <MenuFlyout Opening="MainContextMenu_Opening">
                 <MenuFlyoutItem Text="New Group" Click="MenuNewGroup_Click">
                     <MenuFlyoutItem.Icon>
                         <FontIcon Glyph="&#xE710;" FontFamily="Segoe Fluent Icons" />

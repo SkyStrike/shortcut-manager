@@ -42,7 +42,11 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - Stays out of your way in the system tray.
   - **Intelligent Toggling:** Clicking the tray icon brings the window to the absolute front if it's minimized or behind other windows, otherwise it toggles visibility.
 - **⚡ Admin Support:** Option to launch specific applications with administrative privileges.
-- **📏 Dynamic Sizing:** The window automatically adjusts its height based on the number of shortcuts and expanded groups.
+- **📏 Dynamic Sizing & Positioning:** 
+  - **Customizable Window Scaling:** Control the application's width and initial vertical position via `_appWidthLogical` and `_appTopMarginMultiplier` variables.
+  - **Monitor Switching:** "Move to next monitor" feature in the main context menu allows for seamless transitions between multiple displays, centering the application on each monitor.
+  - **Dynamic Visibility:** The monitor move option automatically adapts its visibility based on the current number of detected displays, even if they are connected after the app is launched.
+  - The window automatically adjusts its height based on the number of shortcuts and expanded groups.
 - **🎹 Keyboard & Mouse Friendly:** 
   - `Double-Click`: Launch a shortcut.
   - `Enter`: Launch the currently highlighted shortcut.
@@ -50,7 +54,7 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - `Esc`: Clear selection, clear search, or hide the window.
   - `Right-Click`: Access comprehensive context menus for shortcuts, groups, and the application background.
   - **Reload:** Quickly refresh the application state from `shortcuts.json` via the context menu.
-  - **Navigation:** Use **Arrow Keys** (Left, Right, Up, Down) to navigate between shortcuts and across different groups.
+  - **Navigation:** Use **Arrow Keys** (Left, Right, Up, Down) to navigate between shortcuts and across different groups. **Aligned Layout:** Navigation is precisely calculated to match the `UniformGridLayout` for perfect row-to-row movement.
   - **Hotkeys:**
     - `F1 - F5`: Toggle expansion of the first 5 shortcut groups.
     - `Alt + 1 - 5`: Quick-launch the first 5 items (from search results or the active group).

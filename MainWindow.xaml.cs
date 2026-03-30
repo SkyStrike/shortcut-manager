@@ -215,9 +215,9 @@ namespace ShortcutManager
         private AppWindow _appWindow;
         
         // Window calculation settings
-        private double _appMinHeightMultiplier = 0.50;
-        private int _appWidthLogical = 1080;
-        private double _appTopMarginMultiplier = 0.30;
+        private double _appMinHeightMultiplier = 0.50; // Minimum window height as percentage of screen height
+        private int _appWidthLogical = 1080;          // Fixed logical width of the application
+        private double _appTopMarginMultiplier = 0.30; // Vertical position as percentage of screen height from the top
 
         // Path to the configuration file
         private string shortcutFile = Path.Combine(AppContext.BaseDirectory, "shortcuts.json");
@@ -290,12 +290,6 @@ namespace ShortcutManager
 
             // Auto-clear selection when the app loses focus
             this.Activated += MainWindow_Activated;
-
-            // Hide "Move to next monitor" if only one monitor is present
-            if (DisplayArea.FindAll().Count <= 1)
-            {
-                MoveToNextMonitorMenuItem.Visibility = Visibility.Collapsed;
-            }
 
             this.Closed += (s, e) => {
                 if (MyTrayIcon != null)
@@ -1586,6 +1580,16 @@ namespace ShortcutManager
             catch (Exception ex)
             {
                 Log.Error(ex, "Error during invalid shortcut cleanup");
+            }
+        }
+
+        private void MainContextMenu_Opening(object sender, object e)
+        {
+            // Dynamically show/hide "Move to next monitor" based on current display count
+            if (MoveToNextMonitorMenuItem != null)
+            {
+                var displays = DisplayArea.FindAll();
+                MoveToNextMonitorMenuItem.Visibility = displays.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
             }
         }
 
