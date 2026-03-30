@@ -188,6 +188,7 @@ namespace ShortcutManager
         private const uint SHGFI_LARGEICON = 0x0;
         private const uint SHGFI_SMALLICON = 0x1;
         private const uint SHGFI_LINKOVERLAY = 0x8000;
+        private const uint SHGFI_ICONLOCATION = 0x1000;
         private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
         private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
         private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
@@ -964,7 +965,7 @@ namespace ShortcutManager
         /// Generates a standardized path for an icon file in the centralized cache.
         /// Uses file extension for non-executables and filename for executables.
         /// </summary>
-        private string GetIconCachePath(string filePath)
+        private string GetIconCachePath(string filePath, string shortcutName = null)
         {
             if (string.IsNullOrEmpty(filePath)) return null;
 
@@ -973,15 +974,17 @@ namespace ShortcutManager
 
             if (Directory.Exists(filePath))
             {
-                // Standard folder icon. If we wanted to support custom folder icons per folder, 
-                // we would need a unique name here (e.g. based on path hash).
-                // For "associated" folder icon, a shared one is appropriate.
                 fileName = "folder_default.png";
             }
             else
             {
                 string extension = Path.GetExtension(filePath).ToLower().TrimStart('.');
-                if (extension == "exe" || extension == "ico" || extension == "lnk")
+                if (extension == "lnk" && !string.IsNullOrEmpty(shortcutName))
+                {
+                    // Use shortcut name for .lnk files to support custom/web-app icons
+                    fileName = shortcutName.ToLower() + ".png";
+                }
+                else if (extension == "exe" || extension == "ico" || extension == "lnk")
                 {
                     fileName = Path.GetFileNameWithoutExtension(filePath).ToLower() + ".png";
                     if (string.IsNullOrEmpty(fileName) || fileName == ".png")
@@ -1022,7 +1025,8 @@ namespace ShortcutManager
                 bool isFile = File.Exists(effectiveSource);
                 bool isDir = Directory.Exists(effectiveSource);
 
-                string iconPath = GetIconCachePath(item.Path);
+                // Use effectiveSource (the .lnk file) for cache naming, not the target .exe
+                string iconPath = GetIconCachePath(effectiveSource, item.Name);
                 if (iconPath == null) return false;
 
                 // Skip extraction if icon already exists and we're not forcing a refresh
@@ -1051,8 +1055,8 @@ namespace ShortcutManager
                 }
                 else if (isFile && Path.GetExtension(effectiveSource).ToLower() == ".lnk")
                 {
-                    // Special handling for .lnk files to get the specific icon assigned to the shortcut
-                    // using IShellLink COM interface.
+                    // For .lnk files, we use IShellLink to get the clean icon source (path + index)
+                    // and then ExtractIconEx to get the icon WITHOUT the shell's link overlay.
                     try
                     {
                         ShellLink shellLink = new ShellLink();
@@ -1066,7 +1070,7 @@ namespace ShortcutManager
                         string finalIconSource = iconPathBuilder.ToString();
                         if (string.IsNullOrEmpty(finalIconSource))
                         {
-                            // Fallback to target path if no specific icon is set
+                            // If no specific icon is set, resolve the target path to get its icon
                             System.Text.StringBuilder targetPathBuilder = new System.Text.StringBuilder(260);
                             WIN32_FIND_DATAW fd = new WIN32_FIND_DATAW();
                             link.GetPath(targetPathBuilder, targetPathBuilder.Capacity, out fd, 0);
@@ -1078,9 +1082,7 @@ namespace ShortcutManager
                         finalIconSource = Environment.ExpandEnvironmentVariables(finalIconSource);
                         
                         IntPtr[] largeIcons = new IntPtr[1];
-                        ExtractIconEx(finalIconSource, iconIndex, largeIcons, null, 1);
-
-                        if (largeIcons[0] != IntPtr.Zero)
+                        if (ExtractIconEx(finalIconSource, iconIndex, largeIcons, null, 1) > 0 && largeIcons[0] != IntPtr.Zero)
                         {
                             using (var icon = Icon.FromHandle(largeIcons[0]))
                             {
@@ -1093,13 +1095,13 @@ namespace ShortcutManager
                         }
                         else
                         {
-                            // Final fallback to SHGetFileInfo if ExtractIconEx fails
+                            // Fallback to ShellInfo if extraction fails
                             ExtractUsingShellInfo(effectiveSource, iconPath, isFile, isDir);
                         }
                     }
                     catch (Exception ex)
                     {
-                        Log.Warning(ex, "Failed to extract icon via IShellLink for {Path}, falling back", effectiveSource);
+                        Log.Warning(ex, "Failed to extract clean icon via IShellLink for {Path}, falling back", effectiveSource);
                         ExtractUsingShellInfo(effectiveSource, iconPath, isFile, isDir);
                     }
                 }
@@ -1132,6 +1134,36 @@ namespace ShortcutManager
             uint attributes = FILE_ATTRIBUTE_NORMAL;
 
             string extension = Path.GetExtension(effectiveSource).ToLower();
+
+            // Try to get icon without overlay by using SHGFI_ICONLOCATION first.
+            // This retrieves the file and index of the actual icon, bypassing the shell's overlay logic.
+            // For .lnk files, this is essential to avoid the shortcut arrow.
+            if (isFile)
+            {
+                if (SHGetFileInfo(effectiveSource, attributes, ref shinfo, (uint)Marshal.SizeOf(shinfo), SHGFI_ICONLOCATION) != IntPtr.Zero)
+                {
+                    string loc = shinfo.szDisplayName;
+                    int index = shinfo.iIcon;
+                    if (!string.IsNullOrEmpty(loc))
+                    {
+                        loc = Environment.ExpandEnvironmentVariables(loc);
+                        IntPtr[] hIconLarge = new IntPtr[1];
+                        // ExtractIconEx handles negative resource IDs correctly
+                        if (ExtractIconEx(loc, index, hIconLarge, null, 1) > 0 && hIconLarge[0] != IntPtr.Zero)
+                        {
+                            using (var icon = Icon.FromHandle(hIconLarge[0]))
+                            {
+                                using (var bitmap = icon.ToBitmap())
+                                {
+                                    bitmap.Save(iconPath, ImageFormat.Png);
+                                }
+                            }
+                            DestroyIcon(hIconLarge[0]);
+                            return;
+                        }
+                    }
+                }
+            }
 
             // If it doesn't exist, or if it's a directory, we can use SHGFI_USEFILEATTRIBUTES
             // to get the icon associated with the file type or folder.
