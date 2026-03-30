@@ -1,0 +1,5 @@
+- For each feature implemented, bug fixed
+	- update the change log (create one if missing). In the change log, also include the date it was implemented.
+	- update the readme if necessary
+	- ensure the comments are included
+- For each new version tag, add the change details since the last version.
