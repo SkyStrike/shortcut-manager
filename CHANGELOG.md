@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **High-DPI Optimization**: Re-engineered window management to utilize `RasterizationScale`, ensuring consistent logical sizing and positioning across varying DPI environments.
 - **Configurable Layout**: Added `_appWidthLogical` and `_appTopMarginMultiplier` variables for centralized control over application dimensions and vertical alignment.
 - **Advanced Icon Maintenance**: Enhanced "Clean Up Unused Icons" utility with dual-source validation, cross-referencing active memory state with the physical `shortcuts.json` configuration.
-- **UI Refinement**: Increased Search Box font size to 18pt for improved legibility and accessibility.
+- **UI Refinement**: Increased Search Box font size to 32pt for improved legibility and accessibility.
 
 ### Fixed
 - **LNK Asset Management**: Resolved naming collisions for web application shortcuts by implementing unique, name-based cache identifiers.
