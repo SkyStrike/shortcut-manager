@@ -95,7 +95,7 @@
                 </ItemsControl.ItemContainerTransitions>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Expander Header="{Binding GroupName}" 
+                        <Expander
                           IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
                           Expanding="Expander_Expanding"
                           Collapsed="Expander_Collapsed"
@@ -106,7 +106,9 @@
                           Margin="5,2"
                           Background="{ThemeResource SystemControlAcrylicElementBrush}"
                           ToolTipService.ToolTip="">
-
+                            <Expander.Header>
+                                <TextBlock Text="{Binding GroupName}" FontSize="18" />
+                            </Expander.Header>
                             <Expander.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem Text="Launch All" Click="MenuGroupLaunchAll_Click">
@@ -161,16 +163,16 @@
                                 <ItemsRepeater.ItemTemplate>
                                     <DataTemplate>
                                         <Grid DoubleTapped="OnShortcutDoubleTapped" 
-                    Tapped="Shortcut_Tapped"
-                    ContextRequested="Shortcut_ContextRequested"
-                                              RightTapped="Shortcut_RightTapped"
-                    Padding="0"
-                    Background="Transparent"
-                    CanDrag="True"
-                    DragStarting="Shortcut_DragStarting"
-                    AllowDrop="True"
-                    DragOver="Shortcut_DragOver"
-                    Drop="Shortcut_Drop">
+                                                Tapped="Shortcut_Tapped"
+                                                ContextRequested="Shortcut_ContextRequested"
+                                                RightTapped="Shortcut_RightTapped"
+                                                Padding="0"
+                                                Background="Transparent"
+                                                CanDrag="True"
+                                                DragStarting="Shortcut_DragStarting"
+                                                AllowDrop="True"
+                                                DragOver="Shortcut_DragOver"
+                                                Drop="Shortcut_Drop">
                                             <ToolTipService.ToolTip>
                                                 <ToolTip>
                                                     <StackPanel>
