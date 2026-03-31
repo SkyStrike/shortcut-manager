@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-03-30
+
+### Added
+- **Debounced State Saving**: Implemented a `DispatcherTimer` to batch frequent state changes (like expanding/collapsing multiple groups), reducing disk I/O by waiting for a 2-second idle period before writing to disk.
+- **Reliability (Exit Flush)**: Added logic to immediately flush any pending debounced saves when the application is closed, ensuring no preference changes are lost on exit.
+
+### Fixed
+- **Expander State Persistence**: Resolved an issue where group expansion states were not consistently saved when triggered via mouse clicks, keyboard navigation, or function keys (F1-F5).
+- **Concurrency Safety**: Added internal state guards to prevent redundant or conflicting save operations during bulk UI updates.
+
 ## [1.1.1] - 2026-03-30
 
 ### Added

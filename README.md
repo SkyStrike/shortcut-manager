@@ -78,7 +78,8 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - **InfoBar Feedback:** Real-time status updates (Success/Error) are shown via an in-place `InfoBar` within the Settings dialog for a smoother workflow.
 - **🛠️ Self-Healing Configuration:**
   - **Auto-Initialization:** Automatically generates a "Default" group if `shortcuts.json` is missing or empty.
-  - **Persistence:** Ensuring `shortcuts.json` is always correctly synced to the application's base directory for reliable loading.
+  - **Persistence:** Ensuring `shortcuts.json` and `display_settings.json` are always correctly synced to the application's base directory for reliable loading.
+  - **Optimized State Management:** Implements **Debounced Saving** (2-second idle delay) to reduce disk I/O during frequent UI interactions, with an **Immediate Exit Flush** to prevent data loss on application close.
   - **Path Validation:** Automatically verifies file/directory existence before performing any action.
   - Interactive recovery options: If a path is broken, you can choose to **Remove** the shortcut or **Edit** its properties immediately.
 

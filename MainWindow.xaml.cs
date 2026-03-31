@@ -196,7 +196,7 @@ namespace ShortcutManager
         #endregion
 
         // Main data collection for the UI
-        public ObservableCollection<ShortcutGroup> MyGroups { get; set; } = new();
+        public ObservableCollection<ShortcutGroup> MyGroups { get; set; } = [];
         
         // Special group for displaying search results
         private ShortcutGroup _searchResultGroup = new() { GroupName = "Search Result", IsExpanded = true };
@@ -211,6 +211,9 @@ namespace ShortcutManager
         // Semaphore to serialize dialog requests. WinUI 3 only allows one ContentDialog 
         // to be open at a time. This ensures sequential display and prevents COMException.
         private readonly SemaphoreSlim _dialogSemaphore = new SemaphoreSlim(1, 1);
+
+        // Timer for debouncing state saves to disk
+        private readonly DispatcherTimer _saveDebounceTimer = new DispatcherTimer();
         
         private AppWindow _appWindow;
         
@@ -225,6 +228,13 @@ namespace ShortcutManager
         {
             LoadSettings();
             InitializeComponent();
+
+            // Initialize save debounce timer (2 second delay)
+            _saveDebounceTimer.Interval = TimeSpan.FromSeconds(2);
+            _saveDebounceTimer.Tick += (s, e) => {
+                _saveDebounceTimer.Stop();
+                SaveStates(immediate: true);
+            };
 
             // Handle settings changes to refresh UI immediately where needed
             AppSettings.PropertyChanged += (s, e) => {
@@ -304,6 +314,13 @@ namespace ShortcutManager
             this.Activated += MainWindow_Activated;
 
             this.Closed += (s, e) => {
+                // Flush any pending debounced saves immediately on exit
+                if (_saveDebounceTimer.IsEnabled)
+                {
+                    _saveDebounceTimer.Stop();
+                    SaveStates(immediate: true);
+                }
+
                 if (MyTrayIcon != null)
                 {
                     MyTrayIcon.Dispose();
@@ -429,9 +446,17 @@ namespace ShortcutManager
         /// Persists the current state of groups and shortcuts to the JSON file.
         /// Saves relative paths for icons to maintain portability.
         /// </summary>
-        private void SaveStates()
+        /// <param name="immediate">If true, writes to disk immediately. If false, debounces the save via timer.</param>
+        private void SaveStates(bool immediate = false)
         {
             if (_isUpdatingStates) return;
+
+            if (!immediate)
+            {
+                _saveDebounceTimer.Stop();
+                _saveDebounceTimer.Start();
+                return;
+            }
 
             try
             {
