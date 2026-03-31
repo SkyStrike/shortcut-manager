@@ -8,7 +8,7 @@ namespace ShortcutManager
 {
     public class DisplaySettings : INotifyPropertyChanged
     {
-        private double _searchBoxFontSize = 18;
+        private double _searchBoxFontSize = 32;
         [JsonPropertyName("searchBoxFontSize")]
         public double SearchBoxFontSize
         {
