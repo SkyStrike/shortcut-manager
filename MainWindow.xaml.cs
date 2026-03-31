@@ -1785,8 +1785,18 @@ namespace ShortcutManager
                     Spacing = 10,
                     Children = 
                     {
-                        new TextBlock { Text = $"Version: {version}" },
-                        new TextBlock { Text = "A simple Shortcut Manager to organize and launch your favorite applications." },
+                        new StackPanel { Spacing = 2, Children = {
+                            new TextBlock { Text = "Version:", Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"] },
+                            new TextBox { 
+                                Text = version, 
+                                IsReadOnly = true, 
+                                BorderThickness = new Thickness(0), 
+                                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                                Padding = new Thickness(0),
+                                TextWrapping = TextWrapping.Wrap
+                            }
+                        }},
+                        new TextBlock { Text = "A simple Shortcut Manager to organize and launch your favorite applications.", TextWrapping = TextWrapping.Wrap },
                         new HyperlinkButton 
                         { 
                             Content = "GitHub Repository", 

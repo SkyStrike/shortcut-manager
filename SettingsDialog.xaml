@@ -104,17 +104,6 @@
                     <TextBlock Text="Create Backup"/>
                 </StackPanel>
             </Button>
-
-            <StackPanel Spacing="2">
-                <TextBlock Text="Version Info" Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                <TextBox x:Name="VersionTextBox" 
-                         IsReadOnly="True" 
-                         BorderThickness="0" 
-                         Background="Transparent"
-                         Padding="0"
-                         TextWrapping="Wrap"
-                         Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
-            </StackPanel>
         </StackPanel>
 
         <InfoBar x:Name="StatusInfoBar"

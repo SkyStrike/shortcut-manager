@@ -42,13 +42,6 @@ namespace ShortcutManager
             _isUpdatingSettings = true;
             try
             {
-                // This pulls the version GitVersion calculated during the build
-                var version = typeof(MainWindow).Assembly
-                    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-                    .InformationalVersion;
-
-                VersionTextBox.Text = $"Version: {version}";
-
                 // Check if the application is already configured to run at startup
                 string shortcutPath = GetStartupShortcutPath();
                 bool exists = File.Exists(shortcutPath);
@@ -63,7 +56,6 @@ namespace ShortcutManager
             catch (Exception ex)
             {
                 Log.Error(ex, "Error loading settings");
-                VersionTextBox.Text = "Build: Version info unavailable";
             }
             finally
             {
