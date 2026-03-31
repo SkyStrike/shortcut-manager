@@ -613,6 +613,7 @@ namespace ShortcutManager
             int itemsPerRow = CalculateItemsPerRow();
             int newGroupIdx = currentGroupIdx;
             int newItemIdx = currentItemIdx;
+            bool stateChanged = false;
 
             switch (key)
             {
@@ -639,7 +640,11 @@ namespace ShortcutManager
                 if (newGroupIdx >= 0)
                 {
                     var prevGroup = MyGroups[newGroupIdx];
-                    prevGroup.IsExpanded = true;
+                    if (!prevGroup.IsExpanded)
+                    {
+                        prevGroup.IsExpanded = true;
+                        stateChanged = true;
+                    }
                     // If moving Up, try to stay in the same "column" in the last row
                     if (key == Windows.System.VirtualKey.Up)
                     {
@@ -665,7 +670,11 @@ namespace ShortcutManager
                 if (newGroupIdx < MyGroups.Count)
                 {
                     var nextGroup = MyGroups[newGroupIdx];
-                    nextGroup.IsExpanded = true;
+                    if (!nextGroup.IsExpanded)
+                    {
+                        nextGroup.IsExpanded = true;
+                        stateChanged = true;
+                    }
                     // If moving Down, try to stay in the same "column" in the first row
                     if (key == Windows.System.VirtualKey.Down)
                     {
@@ -681,6 +690,11 @@ namespace ShortcutManager
                     newGroupIdx = currentGroupIdx;
                     newItemIdx = currentGroup.Shortcuts.Count - 1;
                 }
+            }
+
+            if (stateChanged)
+            {
+                SaveStates();
             }
 
             // Apply new selection
@@ -1301,6 +1315,7 @@ namespace ShortcutManager
             // Accordion behavior: only one group expanded at a time
             if (sender.DataContext is ShortcutGroup expandedGroup)
             {
+                expandedGroup.IsExpanded = true; // Force update model before saving
                 foreach (var group in MyGroups)
                 {
                     if (group != expandedGroup)
@@ -1317,6 +1332,7 @@ namespace ShortcutManager
 
         private void Expander_Collapsed(Expander sender, ExpanderCollapsedEventArgs args)
         {
+            if (_isUpdatingStates) return;
             SaveStates();
             UpdateWindowSize();
         }
@@ -2128,6 +2144,7 @@ namespace ShortcutManager
                 {
                     var group = MyGroups[actualIndex];
                     group.IsExpanded = !group.IsExpanded;
+                    SaveStates();
                     e.Handled = true;
                 }
                 return;
