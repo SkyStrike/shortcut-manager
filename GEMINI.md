@@ -3,3 +3,4 @@
 	- update the readme if necessary
 	- ensure the comments are included
 - For each new version tag, add the change details since the last version.
+- Even if you have permission to execute git commands, always confirm before committing/tagging/pushing. Unless I explicitly say so.
