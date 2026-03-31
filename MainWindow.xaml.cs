@@ -1771,46 +1771,9 @@ namespace ShortcutManager
 
         private async void MenuAbout_Click(object sender, RoutedEventArgs e)
         {
-            var version = typeof(MainWindow).Assembly
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
-                .InformationalVersion ?? "Unknown";
-
-            var gitLink = "https://github.com/SkyStrike/shortcut-manager";
-
-            ContentDialog aboutDialog = new ContentDialog
-            {
-                Title = "About Shortcut Manager",
-                Content = new StackPanel
-                {
-                    Spacing = 10,
-                    Children = 
-                    {
-                        new StackPanel { Spacing = 2, Children = {
-                            new TextBlock { Text = "Version:", Style = (Style)Application.Current.Resources["BodyStrongTextBlockStyle"] },
-                            new TextBox { 
-                                Text = version, 
-                                IsReadOnly = true, 
-                                BorderThickness = new Thickness(0), 
-                                Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                                Padding = new Thickness(0),
-                                TextWrapping = TextWrapping.Wrap
-                            }
-                        }},
-                        new TextBlock { Text = "A simple Shortcut Manager to organize and launch your favorite applications.", TextWrapping = TextWrapping.Wrap },
-                        new HyperlinkButton 
-                        { 
-                            Content = "GitHub Repository", 
-                            NavigateUri = new Uri(gitLink),
-                            HorizontalAlignment = HorizontalAlignment.Left
-                        }
-                    }
-                },
-                CloseButtonText = "Close",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.Content.XamlRoot
-            };
-
-            await ShowDialogAsync(aboutDialog);
+            var dialog = new AboutDialog();
+            dialog.XamlRoot = this.Content.XamlRoot;
+            await ShowDialogAsync(dialog);
         }
 
         private async void MenuExit_Click(object sender, RoutedEventArgs e)

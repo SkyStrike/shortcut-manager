@@ -29,6 +29,11 @@
                         <FontIcon Glyph="&#xE72C;" FontFamily="Segoe Fluent Icons" />
                     </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
+                <MenuFlyoutItem Text="Hide" Click="MenuHide_Click">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="&#xE7D1;" FontFamily="Segoe Fluent Icons" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Display Preferences" Click="MenuDisplayPreferences_Click">
                     <MenuFlyoutItem.Icon>
@@ -38,11 +43,6 @@
                 <MenuFlyoutItem Text="Settings" Click="MenuSettings_Click">
                     <MenuFlyoutItem.Icon>
                         <FontIcon Glyph="&#xE713;" FontFamily="Segoe Fluent Icons" />
-                    </MenuFlyoutItem.Icon>
-                </MenuFlyoutItem>
-                <MenuFlyoutItem Text="Hide" Click="MenuHide_Click">
-                    <MenuFlyoutItem.Icon>
-                        <FontIcon Glyph="&#xE7D1;" FontFamily="Segoe Fluent Icons" />
                     </MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
                 <MenuFlyoutItem x:Name="MoveToNextMonitorMenuItem" Text="Move to next monitor" Click="MenuMoveToNextMonitor_Click">
