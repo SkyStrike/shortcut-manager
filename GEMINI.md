@@ -1,6 +1,5 @@
-- For each feature implemented, bug fixed
-	- update the change log (create one if missing). In the change log, also include the date it was implemented.
-	- update the readme if necessary
-	- ensure the comments are included
+- Proactively update CHANGELOG.md and README.md (if applicable) immediately after implementing a feature or fixing a bug, without waiting to ask.
+- Treat the documentation as a mandatory step in the implementation process itself.
+- When implementing the feature or fixing a bug, ensure necessary comments are included.
 - For each new version tag, add the change details since the last version.
 - Even if you have permission to execute git commands, always confirm before committing/tagging/pushing. Unless I explicitly say so.
