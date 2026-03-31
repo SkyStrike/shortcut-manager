@@ -27,6 +27,7 @@ using Windows.Foundation.Collections;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using System.Runtime.InteropServices;
+using System.Reflection;
 
 namespace ShortcutManager
 {
@@ -1766,6 +1767,40 @@ namespace ShortcutManager
                 SaveSettings();
                 // Settings PropertyChanged events will trigger UpdateWindowSize
             }
+        }
+
+        private async void MenuAbout_Click(object sender, RoutedEventArgs e)
+        {
+            var version = typeof(MainWindow).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+                .InformationalVersion ?? "Unknown";
+
+            var gitLink = "https://github.com/SkyStrike/shortcut-manager";
+
+            ContentDialog aboutDialog = new ContentDialog
+            {
+                Title = "About Shortcut Manager",
+                Content = new StackPanel
+                {
+                    Spacing = 10,
+                    Children = 
+                    {
+                        new TextBlock { Text = $"Version: {version}" },
+                        new TextBlock { Text = "A simple Shortcut Manager to organize and launch your favorite applications." },
+                        new HyperlinkButton 
+                        { 
+                            Content = "GitHub Repository", 
+                            NavigateUri = new Uri(gitLink),
+                            HorizontalAlignment = HorizontalAlignment.Left
+                        }
+                    }
+                },
+                CloseButtonText = "Close",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.Content.XamlRoot
+            };
+
+            await ShowDialogAsync(aboutDialog);
         }
 
         private async void MenuExit_Click(object sender, RoutedEventArgs e)
