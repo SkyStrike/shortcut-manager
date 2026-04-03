@@ -1145,7 +1145,10 @@ namespace ShortcutManager
                         else
                         {
                             // Fallback to ShellInfo if extraction fails
-                            ExtractUsingShellInfo(effectiveSource, iconPath, isFile, isDir);
+                            // CRITICAL: Use the resolved target (finalIconSource) instead of the .lnk file (effectiveSource)
+                            // to avoid the shell automatically adding the shortcut arrow overlay for document links.
+                            string shellSource = string.IsNullOrEmpty(finalIconSource) ? effectiveSource : finalIconSource;
+                            ExtractUsingShellInfo(shellSource, iconPath, isFile, isDir);
                         }
                     }
                     catch (Exception ex)
@@ -1179,6 +1182,7 @@ namespace ShortcutManager
         {
             // Use Win32 SHGetFileInfo for high-quality extraction (32-bit with Alpha)
             SHFILEINFO shinfo = new SHFILEINFO();
+            // We intentionally do NOT use SHGFI_LINKOVERLAY (0x8000) to avoid the shortcut arrow.
             uint flags = SHGFI_ICON | SHGFI_LARGEICON;
             uint attributes = FILE_ATTRIBUTE_NORMAL;
 
