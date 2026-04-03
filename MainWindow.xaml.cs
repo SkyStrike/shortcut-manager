@@ -259,6 +259,9 @@ namespace ShortcutManager
 
             if (_appWindow != null)
             {
+                // Set the window icon
+                _appWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "star.ico"));
+
                 // Hide from task switcher (Alt-Tab) for a more "background app" feel
                 _appWindow.IsShownInSwitchers = false;
 
@@ -1523,7 +1526,8 @@ namespace ShortcutManager
         /// Deletes cached icons that are no longer referenced by any shortcut.
         /// </summary>
         /// <param name="askConfirmation">If true, shows a confirmation dialog before proceeding.</param>
-        public async Task CleanUpUnusedIcons(bool askConfirmation = true)
+        /// <returns>The number of icons deleted.</returns>
+        public async Task<int> CleanUpUnusedIcons(bool askConfirmation = true)
         {
             if (askConfirmation)
             {
@@ -1538,13 +1542,14 @@ namespace ShortcutManager
                 };
 
                 var result = await ShowDialogAsync(confirmDialog);
-                if (result != ContentDialogResult.Primary) return;
+                if (result != ContentDialogResult.Primary) return 0;
             }
 
+            int deletedCount = 0;
             try
             {
                 string iconsDir = Path.Combine(AppContext.BaseDirectory, "icons");
-                if (!Directory.Exists(iconsDir)) return;
+                if (!Directory.Exists(iconsDir)) return 0;
 
                 // Track all icon filenames that are in use
                 var usedIcons = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1591,7 +1596,6 @@ namespace ShortcutManager
 
                 // Get all files in the icons directory
                 var allIconFiles = Directory.GetFiles(iconsDir);
-                int deletedCount = 0;
 
                 foreach (var file in allIconFiles)
                 {
@@ -1616,13 +1620,15 @@ namespace ShortcutManager
             {
                 Log.Error(ex, "Error during icon cleanup");
             }
+            return deletedCount;
         }
 
         /// <summary>
         /// Scans all shortcuts and removes those with invalid/non-existent paths.
         /// </summary>
         /// <param name="askConfirmation">If true, shows a confirmation dialog before proceeding.</param>
-        public async Task CleanUpInvalidShortcuts(bool askConfirmation = true)
+        /// <returns>The number of shortcuts removed.</returns>
+        public async Task<int> CleanUpInvalidShortcuts(bool askConfirmation = true)
         {
             if (askConfirmation)
             {
@@ -1637,12 +1643,12 @@ namespace ShortcutManager
                 };
 
                 var result = await ShowDialogAsync(confirmDialog);
-                if (result != ContentDialogResult.Primary) return;
+                if (result != ContentDialogResult.Primary) return 0;
             }
 
+            int removedCount = 0;
             try
             {
-                int removedCount = 0;
                 // We iterate backwards to allow safe removal while looping
                 foreach (var group in MyGroups)
                 {
@@ -1670,6 +1676,7 @@ namespace ShortcutManager
             {
                 Log.Error(ex, "Error during invalid shortcut cleanup");
             }
+            return removedCount;
         }
 
         private void MainContextMenu_Opening(object sender, object e)

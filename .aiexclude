@@ -1,0 +1,23 @@
+# Ignore build and output folders (High token consumption)
+bin/
+obj/
+publish/
+
+# Ignore IDE settings
+.vs/
+.vscode/
+
+# Ignore UI Resource files (only keep code logic)
+*.resw
+*.pri
+*.ico
+
+# Ignore heavy web/tooling assets if applicable
+node_modules/
+wwwroot/lib/
+
+# Keep only the essential logic for context
+!*.cs
+!*.xaml
+!*.csproj
+!*.sln

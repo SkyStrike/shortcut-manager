@@ -5,6 +5,7 @@
     <TargetPlatformMinVersion>10.0.22000.0</TargetPlatformMinVersion>
     <RootNamespace>ShortcutManager</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\star.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
@@ -17,8 +18,8 @@
 	<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
 	<PublishSingleFile>False</PublishSingleFile>
 	  
-	<ApplicationDisplayVersion>1.1.5</ApplicationDisplayVersion>
-	<ApplicationVersion>1.1.5.0</ApplicationVersion>
+	<ApplicationDisplayVersion>1.1.6</ApplicationDisplayVersion>
+	<ApplicationVersion>1.1.6.0</ApplicationVersion>
 	<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 	  
 	<AppxPackage>false</AppxPackage>

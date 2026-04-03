@@ -231,20 +231,19 @@ namespace ShortcutManager
             await _mainWindow.RegenerateAllIcons(askConfirmation: false);
             ShowStatusMessage("Success", "All icons have been regenerated.", InfoBarSeverity.Success);
         }
+private async void CleanUpIcons_ConfirmClick(object sender, RoutedEventArgs e)
+{
+    CleanUpIconsFlyout.Hide();
+    int count = await _mainWindow.CleanUpUnusedIcons(askConfirmation: false);
+    ShowStatusMessage("Success", $"Cleaned up {count} unused icon files.", InfoBarSeverity.Success);
+}
 
-        private async void CleanUpIcons_ConfirmClick(object sender, RoutedEventArgs e)
-        {
-            CleanUpIconsFlyout.Hide();
-            await _mainWindow.CleanUpUnusedIcons(askConfirmation: false);
-            ShowStatusMessage("Success", "Unused icons have been cleaned up.", InfoBarSeverity.Success);
-        }
-
-        private async void RemoveInvalidShortcuts_ConfirmClick(object sender, RoutedEventArgs e)
-        {
-            RemoveInvalidFlyout.Hide();
-            await _mainWindow.CleanUpInvalidShortcuts(askConfirmation: false);
-            ShowStatusMessage("Success", "Invalid shortcuts have been removed.", InfoBarSeverity.Success);
-        }
+private async void RemoveInvalidShortcuts_ConfirmClick(object sender, RoutedEventArgs e)
+{
+    RemoveInvalidFlyout.Hide();
+    int count = await _mainWindow.CleanUpInvalidShortcuts(askConfirmation: false);
+    ShowStatusMessage("Success", $"Removed {count} invalid shortcuts.", InfoBarSeverity.Success);
+}
 
         /// <summary>
         /// Creates a backup of the shortcuts.json file in a dedicated backups directory.

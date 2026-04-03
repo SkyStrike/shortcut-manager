@@ -37,7 +37,7 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
   - **High-Quality Extraction:** Uses Win32 `SHGetFileInfo` and `IShellLink` for full-color, 32-bit alpha-transparent icons.
   - **LNK Precision:** Specifically extracts the icon assigned to a `.lnk` file (shortcut), even if it differs from the target's default icon (e.g., for Web Apps).
   - **Clean Icons:** Automatically removes the shortcut arrow overlay for a cleaner, high-quality look.
-  - **Robust Cleanup:** "Clean Up Unused Icons" feature now cross-references both active memory and the on-disk `shortcuts.json` to safely remove orphaned icons without risking active ones.
+  - **Robust Cleanup:** "Clean Up Unused Icons" feature now cross-references both active memory and the on-disk `shortcuts.json` to safely remove orphaned icons without risking active ones. Includes detailed reporting of items removed.
   - **Folder Support:** Correctly identifies and displays Windows-associated folder icons.
   - **PNG Storage:** Icons are cached as PNG files to preserve transparency and quality.
 - **🔍 Fast Search:** 
