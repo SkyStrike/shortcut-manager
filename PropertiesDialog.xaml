@@ -13,6 +13,7 @@
         <TextBox x:Name="NameTextBox" Header="Shortcut Name" PlaceholderText="Enter name..."/>
         <TextBox x:Name="PathTextBox" Header="Shortcut Path" PlaceholderText="C:\Path\To\File.exe"/>
         <TextBox x:Name="ArgsTextBox" Header="Arguments" PlaceholderText="--example-arg"/>
+        <TextBox x:Name="WorkDirTextBox" Header="Working Directory" PlaceholderText="C:\Path\To\Directory"/>
         <CheckBox x:Name="AdminCheckBox" Content="Run as Administrator"/>
         <TextBlock x:Name="ErrorTextBlock" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
     </StackPanel>

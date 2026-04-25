@@ -53,7 +53,9 @@ The old shortcut manager is a side bar that shows/collapses. But this version ta
 - **📥 System Tray Integration:** 
   - Stays out of your way in the system tray.
   - **Intelligent Toggling:** Clicking the tray icon brings the window to the absolute front if it's minimized or behind other windows, otherwise it toggles visibility.
-- **⚡ Admin Support:** Option to launch specific applications with administrative privileges.
+- **⚡ Admin & Shell Support:** 
+  - Option to launch specific applications with administrative privileges.
+  - **Working Directory:** Specify a custom directory for an application to start in, useful for tools that depend on local configuration files.
 - **📏 Dynamic Sizing & Positioning:** 
   - **Customizable Window Scaling:** Control the application's width and initial vertical position via the **Display Preferences** dialog.
   - **Interactive Scaling:** Real-time font size adjustments for the Search Box and Group Headers.

@@ -58,6 +58,14 @@ namespace ShortcutManager
             set { _arguments = value; OnPropertyChanged(); }
         }
 
+        private string _workingDirectory = "";
+        [JsonPropertyName("workingDirectory")]
+        public string WorkingDirectory
+        {
+            get => _workingDirectory;
+            set { _workingDirectory = value; OnPropertyChanged(); }
+        }
+
         private string _id = System.Guid.NewGuid().ToString();
         /// <summary>
         /// Unique identifier used for drag-and-drop operations and lookup.

@@ -18,8 +18,8 @@
 	<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
 	<PublishSingleFile>False</PublishSingleFile>
 	  
-	<ApplicationDisplayVersion>1.1.6</ApplicationDisplayVersion>
-	<ApplicationVersion>1.1.6.0</ApplicationVersion>
+	<ApplicationDisplayVersion>1.1.8</ApplicationDisplayVersion>
+	<ApplicationVersion>1.1.8.0</ApplicationVersion>
 	<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 	  
 	<AppxPackage>false</AppxPackage>

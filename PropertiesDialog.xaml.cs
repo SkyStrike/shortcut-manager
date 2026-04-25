@@ -21,6 +21,7 @@ namespace ShortcutManager
             NameTextBox.Text = item.Name;
             PathTextBox.Text = item.Path;
             ArgsTextBox.Text = item.Arguments;
+            WorkDirTextBox.Text = item.WorkingDirectory;
             AdminCheckBox.IsChecked = item.RunAsAdmin;
 
             this.PrimaryButtonClick += PropertiesDialog_PrimaryButtonClick;
@@ -32,6 +33,7 @@ namespace ShortcutManager
         private void PropertiesDialog_PrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
         {
             string path = PathTextBox.Text.Trim();
+            string workDir = WorkDirTextBox.Text.Trim();
             
             // Basic path validation - ensures the file or directory actually exists
             if (string.IsNullOrEmpty(path) || (!File.Exists(path) && !Directory.Exists(path)))
@@ -44,10 +46,22 @@ namespace ShortcutManager
                 return;
             }
 
+            // Optional working directory validation
+            if (!string.IsNullOrEmpty(workDir) && !Directory.Exists(workDir))
+            {
+                ErrorTextBlock.Text = "Invalid working directory. Please enter a valid directory path or leave it empty.";
+                ErrorTextBlock.Visibility = Visibility.Visible;
+
+                // Prevent the dialog from closing
+                args.Cancel = true;
+                return;
+            }
+
             // Apply changes to the data model
             _item.Name = NameTextBox.Text.Trim();
             _item.Path = path;
             _item.Arguments = ArgsTextBox.Text.Trim();
+            _item.WorkingDirectory = workDir;
             _item.RunAsAdmin = AdminCheckBox.IsChecked ?? false;
         }
     }

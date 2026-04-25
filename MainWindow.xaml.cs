@@ -482,6 +482,7 @@ namespace ShortcutManager
                                 Icon = GetRelativePath(s.Icon),
                                 RunAsAdmin = s.RunAsAdmin,
                                 Arguments = s.Arguments,
+                                WorkingDirectory = s.WorkingDirectory,
                                 Id = s.Id
                             })
                         )
@@ -557,6 +558,7 @@ namespace ShortcutManager
                 {
                     FileName = item.Path,
                     Arguments = item.Arguments,
+                    WorkingDirectory = item.WorkingDirectory,
                     UseShellExecute = true,
                     Verb = item.RunAsAdmin ? "runas" : ""
                 };
