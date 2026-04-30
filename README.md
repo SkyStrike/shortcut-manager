@@ -19,6 +19,7 @@ I just need one that allows me to create my own shortcut groups rather than find
 
 - **📂 Group Management:**
   - Create, rename, delete, and rearrange groups using an intuitive context menu.
+  - **Manual Shortcut Creation:** Add new shortcuts directly via context menus without needing to drag and drop files.
   - **Launch All:** Launch every application in a group with one click (includes a safety confirmation for groups with >5 items).
   - **Auto-Initialization:** Dragging items into an empty application automatically creates a "Default" group.
 - **🖱️ Drag & Drop:**

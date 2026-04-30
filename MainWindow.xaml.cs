@@ -1476,6 +1476,25 @@ namespace ShortcutManager
             }
         }
 
+        private async void MenuNewShortcut_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutGroup targetGroup)
+            {
+                var newItem = new ShortcutItem { Id = Guid.NewGuid().ToString(), Name = "New Shortcut" };
+                var dialog = new PropertiesDialog(newItem);
+                dialog.XamlRoot = this.Content.XamlRoot;
+
+                var result = await ShowDialogAsync(dialog);
+                if (result == ContentDialogResult.Primary)
+                {
+                    ExtractAndSaveIcon(newItem, force: false);
+                    targetGroup.Shortcuts.Add(newItem);
+                    SaveStates();
+                    UpdateWindowSize();
+                }
+            }
+        }
+
         private void MenuReload_Click(object sender, RoutedEventArgs e)
         {
             LoadShortcuts();

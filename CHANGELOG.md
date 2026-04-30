@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.9] - 2026-04-30
+
+### Added
+- **Manual Shortcut Creation**: Added "New Shortcut" to the group context menus, allowing users to create shortcuts manually within a specific group without drag-and-drop.
+- **Properties Integration**: Seamlessly integrated the existing Properties dialog for the creation workflow, including validation for paths and working directories.
+
 ## [1.1.8] - 2026-04-25
 
 ### Added
