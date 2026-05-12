@@ -59,7 +59,8 @@ I just need one that allows me to create my own shortcut groups rather than find
   - **Dynamic Visibility:** The monitor move option automatically adapts its visibility based on the current number of detected displays, even if they are connected after the app is launched.
   - The window automatically adjusts its height based on the number of shortcuts and expanded groups.
 - **🎹 Keyboard & Mouse Friendly:** 
-  - **About Dialog:** Quickly view the current version and access the GitHub repository from the context menu.
+  - **About Dialog:** Quickly view the current version, access the GitHub repository, and **Check for Updates** directly from the context menu.
+  - **Update Notification:** Built-in update checker that notifies you when a newer version is available on GitHub and provides a direct link to the release page.
   - **Display Preferences:** Access via context menu to fine-tune font sizes, logical width, and screen positioning multipliers without rebuilding.
   - `Double-Click`: Launch a shortcut.
   - `Enter`: Launch the currently highlighted shortcut.

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.10] - 2026-05-12
+
+### Added
+- **Check for Updates**: Added a "Check for Updates" button to the About dialog that compares the current version with the latest release on GitHub.
+- **Update Notification**: Integrated an InfoBar in the About dialog to notify users of new versions and provide a direct link to the release page.
+
 ## [1.1.9] - 2026-04-30
 
 ### Added

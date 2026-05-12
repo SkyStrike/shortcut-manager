@@ -12,7 +12,17 @@ namespace ShortcutManager
     [JsonSerializable(typeof(ShortcutGroup))]
     [JsonSerializable(typeof(ShortcutItem))]
     [JsonSerializable(typeof(DisplaySettings))]
+    [JsonSerializable(typeof(GitHubRelease))]
     internal partial class ShortcutSerializationContext : JsonSerializerContext
     {
+    }
+
+    public class GitHubRelease
+    {
+        [JsonPropertyName("tag_name")]
+        public string TagName { get; set; }
+
+        [JsonPropertyName("html_url")]
+        public string HtmlUrl { get; set; }
     }
 }
