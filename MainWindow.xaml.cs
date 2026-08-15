@@ -822,6 +822,53 @@ namespace ShortcutManager
             }
         }
 
+        private void MenuDuplicate_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)
+            {
+                DuplicateShortcut(item);
+            }
+        }
+
+        /// <summary>
+        /// Duplicates a shortcut item within its containing group.
+        /// </summary>
+        private void DuplicateShortcut(ShortcutItem original)
+        {
+            if (original == null) return;
+
+            // Find group containing the original shortcut
+            var group = MyGroups.FirstOrDefault(g => g.Shortcuts.Contains(original));
+            if (group == null) return;
+
+            int originalIndex = group.Shortcuts.IndexOf(original);
+
+            var copyItem = new ShortcutItem
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = $"{original.Name} - Copy",
+                Path = original.Path,
+                Arguments = original.Arguments,
+                WorkingDirectory = original.WorkingDirectory,
+                RunAsAdmin = original.RunAsAdmin,
+                Icon = original.Icon
+            };
+
+            // Insert copy right after original item or at the end
+            if (originalIndex >= 0 && originalIndex < group.Shortcuts.Count)
+            {
+                group.Shortcuts.Insert(originalIndex + 1, copyItem);
+            }
+            else
+            {
+                group.Shortcuts.Add(copyItem);
+            }
+
+            SaveStates();
+            UpdateWindowSize();
+            Log.Information($"Duplicated shortcut '{original.Name}' as '{copyItem.Name}' in group '{group.GroupName}'");
+        }
+
         private async void MenuRemove_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuFlyoutItem menuItem && menuItem.DataContext is ShortcutItem item)

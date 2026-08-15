@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Duplicate Shortcut**: Added a "Duplicate" context menu option on individual shortcut items to easily clone shortcuts in-place for tweaking arguments or settings.
+
+### Changed
+- **CI/CD Workflow**: Updated GitHub Actions workflow (`main.yml`) to use `anothrNick/github-tag-action` with weekly cron triggers (Sundays at 18:00 UTC / Mondays 02:00 AM SGT) and manual dispatch support (`workflow_dispatch`). Automatically skips tagging/release when no new commits exist.
+
 ## [1.1.10] - 2026-05-12
 
 ### Added

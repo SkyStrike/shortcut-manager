@@ -1,75 +1,83 @@
-name: Build and Release WinUI 3
+name: Manual & Weekly Release Tagging
 
 on:
-  push:
-    tags:
-      - 'v*' # Triggers when you push v1.0, v1.1.0, etc.
+  schedule:
+    # Monday 02:00 AM SGT (Sunday 18:00 UTC)
+    - cron: '0 18 * * 0'
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type (patch, minor, major)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
-  build:
+  release:
     runs-on: windows-latest
-
     permissions:
       contents: write
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0 # Required for GitVersion to see your history
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Install .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '10.0.x'
+      - name: Bump Version and Create Tag
+        id: tag_version
+        uses: anothrNick/github-tag-action@1.64.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: ${{ inputs.bump_type || 'patch' }}
+          INITIAL_VERSION: 1.0.0
+          WITH_V: true
 
-    - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v1.1.1
-      with:
-        versionSpec: '5.x'
+      - name: Install .NET
+        if: ${{ steps.tag_version.outputs.new_tag }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
 
-    - name: Determine Version
-      id: gitversion
-      uses: gittools/actions/gitversion/execute@v1.1.1
+      - name: Restore Dependencies
+        if: ${{ steps.tag_version.outputs.new_tag }}
+        run: dotnet restore
 
-    - name: Restore Dependencies
-      run: dotnet restore
+      - name: Publish Unpackaged App
+        if: ${{ steps.tag_version.outputs.new_tag }}
+        run: >
+          dotnet publish ShortcutManager.csproj
+          -c Release 
+          -r win-x64 
+          --self-contained true 
+          -p:PublishSingleFile=false
+          -p:PublishTrimmed=false
+          -p:PublishReadyToRun=true
+          -p:EnableMsixTooling=true
+          -p:WindowsPackageType=None
+          -p:PlatformTarget=x64
+          -p:Version=${{ steps.tag_version.outputs.new_version }} 
+          -o ./publish
 
-    - name: Publish Unpackaged App
-      # We disable PublishSingleFile and PublishTrimmed for WinUI 3 to ensure 
-      # all resources.pri and dependency DLLs are correctly loaded at runtime.
-      run: >
-        dotnet publish ShortcutManager.csproj
-        -c Release 
-        -r win-x64 
-        --self-contained true 
-        -p:PublishSingleFile=false
-        -p:PublishTrimmed=false
-        -p:PublishReadyToRun=true
-        -p:EnableMsixTooling=true
-        -p:WindowsPackageType=None
-        -p:PlatformTarget=x64
-        -p:Version=${{ steps.gitversion.outputs.AssemblySemVer }} 
-        -p:InformationalVersion=${{ steps.gitversion.outputs.InformationalVersion }}
-        -o ./publish
+      - name: Zip the Output
+        if: ${{ steps.tag_version.outputs.new_tag }}
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path ./publish -Include *.pdb, *.xml -Recurse | Remove-Item -Force
+          Compress-Archive -Path ./publish/* -DestinationPath ./ShortcutManager_${{ steps.tag_version.outputs.new_tag }}_x64.zip
 
-    - name: Zip the Output
-      shell: pwsh
-      run: |
-        # Remove debug symbols and documentation to keep the release clean
-        Get-ChildItem -Path ./publish -Include *.pdb, *.xml -Recurse | Remove-Item -Force
-        
-        # Compress the entire publish directory including subfolders (like icons/)
-        Compress-Archive -Path ./publish/* -DestinationPath ./ShortcutManager_v${{ steps.gitversion.outputs.MajorMinorPatch }}_x64.zip
-
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: ${{ github.ref_name }}
-        name: Release ${{ steps.gitversion.outputs.FullSemVer }}
-        draft: false
-        prerelease: false
-        files: |
-          *.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        if: ${{ steps.tag_version.outputs.new_tag }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          name: Release ${{ steps.tag_version.outputs.new_tag }}
+          generate_release_notes: true
+          files: |
+            *.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
